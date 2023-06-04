@@ -1,3 +1,0 @@
-module foobar
-	export a
-end
