@@ -152,7 +152,7 @@ struct EntangledSolverData <: InternalSolverDataType
 	end
 	
 	function EntangledSolverData(game::Problems.Game, dim::Int; eps_abs::Float64 = 1e-06, trace_lower_bound::Float64 = 1.0, impose_maximally_entangled = false)
-		new(game.n_X, game.n_Y, game.n_A, game.n_B, dim; eps_abs = eps_abs, trace_lower_bound = trace_lower_bound, impose_maximally_entangled = impose_maximally_entangled)
+		EntangledSolverData(game.n_X, game.n_Y, game.n_A, game.n_B, dim; eps_abs = eps_abs, trace_lower_bound = trace_lower_bound, impose_maximally_entangled = impose_maximally_entangled)
 	end
 	
 end	

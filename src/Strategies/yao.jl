@@ -8,8 +8,12 @@ export YaoProtocol, YaoSolverData, generate_hard_distribution_yao
 struct YaoProtocol <: StrategyType
 	states::Vector{Matrix{Float64}}
 	POVMs::Vector{Pair{Matrix{Float64}, Matrix{Float64}}} # Corresponding to the probability of outputting zero and one
+	function YaoProtocol(n_X::Int64, n_Y::Int64, C::Int64)
+		new([realify(gen_rho(C)) for x=1:n_X], [Pair(realify.(gen_rand_POVM(2,C))...) for y=1:n_Y])
+	end
+	
 	function YaoProtocol(problem::Problems.OneWayCommunicationProblem) # Generates a protocol at random
-		new([realify(gen_rho(problem.C)) for x=1:problem.n_X], [Pair(realify.(gen_rand_POVM(2,problem.C))...) for y=1:problem.n_Y])
+		YaoProtocol(problem.n_X, problem.n_Y, problem.C)
 	end
 end
 

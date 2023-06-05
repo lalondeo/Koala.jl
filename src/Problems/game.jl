@@ -6,7 +6,6 @@ struct Game <: ProblemType
 	n_A::Int64
 	n_B::Int64
 	R::Set{NTuple{4, Int64}}
-	
 	function Game(n_X::Int, n_Y::Int, n_A::Int, n_B::Int, V::Function)
 		R::Set{NTuple{4, Int64}} = Set()
 		for x=1:n_X
@@ -76,6 +75,10 @@ const MagicSquareGame = Game(3,3,4,4,V_magic_square_game)
 
 const CHSH = Game(2,2,2,2, (x,y,a,b) -> ((x==2)&&(y==2)) == (a!=b))
 
+"""
+	coloring_game(G::Matrix{Bool}, C::Int64)::Game
+
+Given a graph G and the number of colors C, builds the corresponding coloring game """
 function coloring_game(G::Matrix{Bool}, C::Int64)::Game
 	R::Set{NTuple{4, Int64}} = Set()
 	n = size(G,2)

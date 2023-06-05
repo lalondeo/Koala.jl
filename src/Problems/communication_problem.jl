@@ -15,6 +15,11 @@ struct OneWayCommunicationProblem <: ProblemType
 	function OneWayCommunicationProblem(n_X::Int, n_Y::Int, C::Int, f::Function, promise::Function)
 		new(n_X, n_Y, C, [f(x,y) for x=1:n_X,  y=1:n_Y], [promise(x,y) for x=1:n_X, y=1:n_Y])
 	end
+	
+	function OneWayCommunicationProblem(n_X::Int64, n_Y::Int64, C::Int64, f::Matrix{Bool}, promise::Matrix{Bool})
+		new(n_X, n_Y, C, f, promise)
+	end
+	
 end
 
 """ 
@@ -48,7 +53,7 @@ function EQ(N, c)
 	return OneWayCommunicationProblem(N, N, c, (x,y) -> (x==y))
 end
 
-function promise_equality(G, c)
+function promise_equality(G::Matrix{Float64}, c::Int64)
 	n = size(G, 1)
 	f = zeros(Bool, n, n)
 	promise = zeros(Bool, n, n)
