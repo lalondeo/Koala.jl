@@ -6,38 +6,41 @@ struct NonSignallingSolverData <: InternalSolverDataType
 	probabilities_alice::Matrix{VariableRef}
 	probabilities_bob::Matrix{VariableRef}
 	
-	function NonSignallingSolverData(game::Problems.Game)
+	function NonSignallingSolverData(n_X::Int, n_Y::Int, n_A::Int, n_B::Int)
 		model = Model(LP_solver())
 		correlations = Dict()
-		for x=1:game.n_X
-			for y=1:game.n_Y
-				correlations[(x,y)] = @variable(model, [1:game.n_X, 1:game.n_Y]; lower_bound = 0.0)
+		for x=1:n_X
+			for y=1:n_Y
+				correlations[(x,y)] = @variable(model, [1:n_X, 1:n_Y]; lower_bound = 0.0)
 			end
 		end
 		
-		probabilities_alice = @variable(model, [1:game.n_X, 1:game.n_A])
-		probabilities_bob = @variable(model, [1:game.n_X, 1:game.n_A])
+		probabilities_alice = @variable(model, [1:n_X, 1:n_A])
+		probabilities_bob = @variable(model, [1:n_X, 1:n_A])
 		
 
-		for x=1:game.n_X
-			for a=1:game.n_A
-				for y=1:game.n_Y
-					@constraint(model, sum(correlations[(x,y)][a,b] for b=1:game.n_B) == probabilities_alice[x,a])
+		for x=1:n_X
+			for a=1:n_A
+				for y=1:n_Y
+					@constraint(model, sum(correlations[(x,y)][a,b] for b=1:n_B) == probabilities_alice[x,a])
 				end
 			end
 		end
 		
-		for y=1:game.n_Y
-			for b=1:game.n_B
-				for x=1:game.n_X
-					@constraint(model, sum(correlations[(x,y)][a,b] for a=1:game.n_A) == probabilities_bob[y,b])
+		for y=1:n_Y
+			for b=1:n_B
+				for x=1:n_X
+					@constraint(model, sum(correlations[(x,y)][a,b] for a=1:n_A) == probabilities_bob[y,b])
 				end
 			end
 		end
 					
 		new(model, correlations, probabilities_alice, probabilities_bob)
 	end
+	
 	function NonSignallingSolverData(game::Problems.Game)
+		new(game.n_X, game.n_Y, game.n_A, game.n_B)
+	end
 		
 	
 end
