@@ -1,4 +1,4 @@
-
+export NonSignallingSolverData, optimize_non_signalling!
 
 struct NonSignallingSolverData <: InternalSolverDataType
 	model::Model
@@ -40,7 +40,7 @@ struct NonSignallingSolverData <: InternalSolverDataType
 end
 
 function optimize_non_signalling!(game::Game, distribution::Matrix{Float64}, success_probabilities::Matrix{Float64}, data::NonSignallingSolverData)::Float64
-	@objective(data.model, sum(distribution[x,y] * data.model.correlations[(x,y)][(a,b)] for (x,y,a,b) in game.R))
+	@objective(data.model, Max, sum(distribution[x,y] * data.model.correlations[(x,y)][(a,b)] for (x,y,a,b) in game.R))
 	optimize!(data.model)
 	success_probabilities .= 0.0
 	for (x,y,a,b) in game.R

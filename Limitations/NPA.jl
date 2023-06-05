@@ -1,4 +1,4 @@
-function upper_bound_dist(game::Game, distribution::Matrix{Float64}, info::NPAGeneral)
+function upper_bound_dist(game::Game, distribution::Matrix{Float64}, info::T) where T <: NPA
 	empty!(info.model.objective)
 	for (x,y,a,b) in game.R
 		push!(info.model.objective, (info.correlation_components[(x,y,a,b)]..., -distribution[x,y]))
