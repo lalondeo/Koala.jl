@@ -1,9 +1,10 @@
 module Problems
 
 export ProblemType, uniform_distribution
-
 abstract type ProblemType end
 
+
+include("../utils.jl")
 include("communication_problem.jl") 
 
 

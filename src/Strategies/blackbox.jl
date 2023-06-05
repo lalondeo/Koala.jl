@@ -1,14 +1,9 @@
-
-
 using JuMP
 using LinearAlgebra
-using CPLEX
 using RandomMatrices
-using COSMO
 import Base.copyto!
 
 
-######################### Black-box algorithm for local search #########################
 
 abstract type StrategyType end
 abstract type InternalSolverDataType end
@@ -16,14 +11,67 @@ abstract type InternalSolverDataType end
 export evaluate_success_probabilities!, evaluate_success_probabilities, evaluate_success_probability, optimize_strategy!
 
 
-function evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: ProblemType where S <: StrategyType
+######################### Black-box algorithm for local search #########################
+
+
+
+"""
+	evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: Problems.ProblemType where S <: StrategyType
+	
+Given a problem, a strategy for said problem and a matrix of success probabilities, fills the matrix so that the entry (x,y) equals the success probability on inputs x and y. """
+function evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: Problems.ProblemType where S <: StrategyType
+	error("evaluate_success_probabilities! not implemented")
+end
+
+"""
+	evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: Problems.ProblemType where S <: StrategyType
+
+Given a problem and a strategy for said problem, returns a n_X x n_Y matrix containing the success probabilities for every input pair. """
+function evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: Problems.ProblemType where S <: StrategyType
 	success_probabilities = zeros(problem.n_X, problem.n_Y)
-	evaluate_success_probabilities!(problem, protocol, success_probabilities)
+	evaluate_success_probabilities!(problem, strategy, success_probabilities)
 	return success_probabilities
 end
 
+
+"""
+	copyto!(strat1::S, strat2::S) where S <: StrategyType
+
+Copies strat2 into strat1. """
+function copyto!(strat1::S, strat2::S) where S <: StrategyType
+	error("copyto! not implemented")
+end
+
+"""
+	evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: Problems.ProblemType where S <: StrategyType
+
+Given a problem, a strategy for said problem and a distribution on the inputs, returns the average success probability under the distribution.
+"""
+function evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: Problems.ProblemType where S <: StrategyType
+	@warn "evaluate_success_probability not overriden: forced to compute it using evaluate_success_probabilities, which corresponds to an unnecessary allocation. "
+	return dot(distribution, evaluate_success_probabilities(problem, strategy))
+end
+
+"""
+	scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: Problems.ProblemType
+
+Given a strategy for a given problem, fiddles with the strategy. This is used in the context of a local search to reboot the search.  """
+function scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: Problems.ProblemType
+	error("scramble_strategy! not implemented")
+end
+
+
+"""
+	improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+
+Give a problem, a strategy for said problem, a distribution on the inputs and a solver data object, attemps to replace the strategy with a better one. """
+function improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	error("improve_strategy! not implemented")
+end
+
+
 function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
+				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 				
 	old_value = 0
 	best_value = 0
@@ -71,7 +119,7 @@ optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solve
 	depending on the value of stop_at_local_maximum. At the end of the process, the contents of strategy is the best-scoring strategy found so far.
 """
 function optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
+				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	return optimize_strategy!(problem, strategy, deepcopy(strategy), distribution, solver_data; max_iter=max_iter, epsilon = epsilon, stop_at_local_maximum = stop_at_local_maximum)
 end
 
@@ -93,7 +141,7 @@ a halting condition will be checked (namely, if the gap between the primal and d
 with corresponding dual variable equal to zero for time\\_until\\_suppression iterations are thrown out. Additionally, additional_constraints is a function that is given the model and D and is permitted to add constraints on the allowed distributions."""
 function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; max_iter=1000, alpha = 0.003, M = 100, min_stabilization = 50, trust_oracle = false, epsilon = 1e-03,
 									time_until_suppression = 20, additional_constraints = (model, D) -> nothing, verbose = true)
-	model = Model(CPLEX.Optimizer)
+	model = Model(LP_solver())
 	set_silent(model)
 	
 	@variable(model, D[1:n_X, 1:n_Y]; lower_bound = 0.0)
@@ -102,7 +150,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	
 	@variable(model, z >= 0) # Best winning probability in the worst case so far
 	
-	### Stabilization varaibles
+	### Stabilization variables
 	@variable(model, gap_plus[1:n_X, 1:n_Y]; lower_bound = 0.0)
 	@variable(model, gap_minus[1:n_X, 1:n_Y]; lower_bound = 0.0)
 	@variable(model, allowed_gap[1:n_X, 1:n_Y])
@@ -197,7 +245,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 end
 
 function generate_hard_distribution(problem::P, strategy::S, data::I; additional_constraints = (model, D) -> nothing, full_optimization_probability = 0.2, optimization_iter_regular = 5, 
-	optimization_iter_extended = 50, max_iter = 1000) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	optimization_iter_extended = 50, max_iter = 1000) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	test_strategy = deepcopy(strategy)
 	
 	function oracle!(distribution::Matrix{Float64}, success_probabilities::Matrix{Float64})

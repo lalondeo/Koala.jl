@@ -1,16 +1,42 @@
 
 export ClassicalStrategy, ClassicalSolverData, HasPerfectClassicalStrategyInfo, has_perfect_classical_strategy!
 
+######################### Strategy definition and helper functions #########################
+
+
 struct ClassicalStrategy <: StrategyType
 	outputs_Alice::Vector{Int64}
 	outputs_Bob::Vector{Int64}
 	
-	function ClassicalStrategy(game::Game)
-		new(rand(1:game.n_A, game.n_X), rand(1:game.n_B, game.n_Y))
+	function ClassicalStrategy(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64)
+		new(rand(1:n_A, n_X), rand(1:n_B, n_Y))
+	end
+	
+	function ClassicalStrategy(game::Problems.Game)
+		new(game.n_X, game.n_A, game.n_Y, game.n_B)
+	end
+	
+end
+
+function copyto!(strat1::ClassicalStrategy, strat2::ClassicalStrategy)
+	strat1.outputs_Alice .= strat2.outputs_Alice
+	strat1.outputs_Bob .= strat2.outputs_Bob
+end
+
+
+function evaluate_success_probabilities!(game::Problems.Game, strategy::ClassicalStrategy, success_probabilities::Matrix{Float64})
+	for x=1:game.n_X
+		for y=1:game.n_Y
+			success_probabilities[x,y] = (x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R
+		end
 	end
 end
 
-function scramble_strategy!(strategy::ClassicalStrategy, game::Game)
+function evaluate_success_probability(game::Problems.Game, strategy::ClassicalStrategy, distribution::Matrix{Float64})::Float64
+	return sum(distribution[x,y] * ((x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R) for x=1:game.n_X for y=1:game.n_Y)
+end
+
+function scramble_strategy!(strategy::ClassicalStrategy, game::Problems.Game)
 	for x=1:game.n_X
 		if(rand() < 0.5)
 			strategy.outputs_Alice[x] = rand(1:game.n_A)
@@ -25,33 +51,33 @@ function scramble_strategy!(strategy::ClassicalStrategy, game::Game)
 end
 
 
-function copyto!(strat1::ClassicalStrategy, strat2::ClassicalStrategy)
-	strat1.outputs_Alice .= strat2.outputs_Alice
-	strat1.outputs_Bob .= strat2.outputs_Bob
-end
 
-function evaluate_success_probabilities!(game::Game, strategy::ClassicalStrategy, success_probabilities::Matrix{Float64})
-	for x=1:game.n_X
-		for y=1:game.n_Y
-			success_probabilities[x,y] = (x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R
-		end
-	end
-end
 
-function evaluate_success_probability(game::Game, strategy::ClassicalStrategy, distribution::Matrix{Float64})
-	return sum(distribution[x,y] * ((x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R) for x=1:game.n_X for y=1:game.n_Y)
-end
+
+
+######################### Solver data object #########################
+
 
 struct ClassicalSolverData <: InternalSolverDataType
 	T_x::Matrix{Float64}
 	T_y::Matrix{Float64}
 	
-	function ClassicalSolverData(game::Game)
-		new(zeros(game.n_X, game.n_A), zeros(game.n_Y, game.n_B))
+	function ClassicalSolverData(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64)
+		new(zeros(n_X, n_A), zeros(n_Y, n_B))
 	end
+	
+	
+	function ClassicalSolverData(game::Problems.Game)
+		new(game.n_X, game.n_Y, game.n_A, game.n_B)
+	end
+	
 end
 
-function improve_strategy!(game::Game, strategy::ClassicalStrategy, distribution::Matrix{Float64}, data::ClassicalSolverData)
+
+######################### Optimization functions #########################
+
+
+function improve_strategy!(game::Problems.Game, strategy::ClassicalStrategy, distribution::Matrix{Float64}, data::ClassicalSolverData)
 	data.T_x .= 0
 	
 	for (x,y,a,b) in game.R
@@ -77,17 +103,19 @@ function improve_strategy!(game::Game, strategy::ClassicalStrategy, distribution
 	end
 end
 
+######################### Code specifically for checking whether a given game has a perfect classical strategy #########################
+
 struct HasPerfectClassicalStrategyInfo
 	legal_outputs_alice::Matrix{Bool}
 	legal_outputs_bob::Matrix{Bool}
 	history::Array{Tuple{Int,Int,Int}}
 	branching::Array{Int}
-	function HasPerfectClassicalStrategyInfo(game::Game)
+	function HasPerfectClassicalStrategyInfo(game::Problems.Game)
 		new(zeros(Bool, game.n_X, game.n_A), zeros(Bool, game.n_Y, game.n_B))
 	end
 end
 
-function has_perfect_classical_strategy!(game::Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
+function has_perfect_classical_strategy!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
 	info.legal_outputs_alice .= true
 	info.legal_outputs_bob .= true
 	strategy.outputs_alice .= -1

@@ -6,8 +6,8 @@ struct NonSignallingSolverData <: InternalSolverDataType
 	probabilities_alice::Matrix{VariableRef}
 	probabilities_bob::Matrix{VariableRef}
 	
-	function NonSignallingSolverData(game::Game)
-		model = Model(CPLEX.Optimizer)
+	function NonSignallingSolverData(game::Problems.Game)
+		model = Model(LP_solver())
 		correlations = Dict()
 		for x=1:game.n_X
 			for y=1:game.n_Y
@@ -37,9 +37,12 @@ struct NonSignallingSolverData <: InternalSolverDataType
 					
 		new(model, correlations, probabilities_alice, probabilities_bob)
 	end
+	function NonSignallingSolverData(game::Problems.Game)
+		
+	
 end
 
-function optimize_non_signalling!(game::Game, distribution::Matrix{Float64}, success_probabilities::Matrix{Float64}, data::NonSignallingSolverData)::Float64
+function optimize_non_signalling!(game::Problems.Game, distribution::Matrix{Float64}, success_probabilities::Matrix{Float64}, data::NonSignallingSolverData)::Float64
 	@objective(data.model, Max, sum(distribution[x,y] * data.model.correlations[(x,y)][(a,b)] for (x,y,a,b) in game.R))
 	optimize!(data.model)
 	success_probabilities .= 0.0
@@ -48,7 +51,7 @@ function optimize_non_signalling!(game::Game, distribution::Matrix{Float64}, suc
 	end
 end
 
-function optimize_non_signalling(game::Game, distribution::Matrix{Float64})::Float64
+function optimize_non_signalling(game::Problems.Game, distribution::Matrix{Float64})::Float64
 	data = NonSignallingSolverData(game)
 	success_probabilities = zeros(game.n_X, game.n_Y)
 	return optimize_non_signalling!(game, distribution, success_probabilities, data)

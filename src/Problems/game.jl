@@ -1,6 +1,4 @@
-include("../utils2.jl")
-
-export Game, encode_game, decode_game, MagicSquareGame, CHSH
+export Game, encode_game, decode_game, MagicSquareGame, CHSH, coloring_game
 
 struct Game <: ProblemType
 	n_X::Int64
@@ -77,6 +75,30 @@ end
 const MagicSquareGame = Game(3,3,4,4,V_magic_square_game)
 
 const CHSH = Game(2,2,2,2, (x,y,a,b) -> ((x==2)&&(y==2)) == (a!=b))
+
+function coloring_game(G::Matrix{Bool}, C::Int64)::Game
+	R::Set{NTuple{4, Int64}} = Set()
+	n = size(G,2)
+	for x=1:n
+		for y=1:n
+			if(x==y)
+				for c=1:C
+					push!(R, (x,y,c,c))
+				end
+			else
+				for c1=1:C
+					for c2=1:C
+						if(!(G[x,y]) || (c1 != c2))
+							push!(R, (x,y,c1,c2))
+						end
+					end
+				end
+			end
+		end
+	end
+	return Game(n, n, C, C, R)
+end
+				
 
 
 

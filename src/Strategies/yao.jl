@@ -8,7 +8,7 @@ export YaoProtocol, YaoSolverData, generate_hard_distribution_yao
 struct YaoProtocol <: StrategyType
 	states::Vector{Matrix{Float64}}
 	POVMs::Vector{Pair{Matrix{Float64}, Matrix{Float64}}} # Corresponding to the probability of outputting zero and one
-	function YaoProtocol(problem::OneWayCommunicationProblem) # Generates a protocol at random
+	function YaoProtocol(problem::Problems.OneWayCommunicationProblem) # Generates a protocol at random
 		new([realify(gen_rho(problem.C)) for x=1:problem.n_X], [Pair(realify.(gen_rand_POVM(2,problem.C))...) for y=1:problem.n_Y])
 	end
 end
@@ -24,12 +24,7 @@ function copyto!(prot1::YaoProtocol, prot2::YaoProtocol)
 	end
 end
 
-
-"""
-	evaluate_success_probabilities!(problem::OneWayCommunicationProblem, protocol::YaoProtocol, success_probabilities::Matrix{Float64})
-
-Given a problem and a protocol for the given problem, computes the success probability for every input pair and stores them in success_probabilities. """
-function evaluate_success_probabilities!(problem::OneWayCommunicationProblem, protocol::YaoProtocol, success_probabilities::Matrix{Float64})
+function evaluate_success_probabilities!(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, success_probabilities::Matrix{Float64})
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
 			if(problem.promise[x,y])
@@ -41,13 +36,7 @@ function evaluate_success_probabilities!(problem::OneWayCommunicationProblem, pr
 	end
 end
 
-
-
-"""
-	evaluate_success_probability(problem::OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64})::Float64
-
-Given a problem, a protocol for the given problem and a distribution on the inputs, returns the average success probability under the given distribution. """
-function evaluate_success_probability(problem::OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64})::Float64
+function evaluate_success_probability(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64})::Float64
 	tot = 0.0
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
@@ -59,11 +48,7 @@ function evaluate_success_probability(problem::OneWayCommunicationProblem, proto
 	return tot
 end
 
-"""
-	scramble_strategy!(problem::OneWayCommunicationProblem, protocol::YaoProtocol)
-
-Given a problem and a protocol, fiddles with parts of the protocol. Used in the context of a local search to reboot the search after a local maximum has been reached. """
-function scramble_strategy!(protocol::YaoProtocol, problem::OneWayCommunicationProblem)
+function scramble_strategy!(protocol::YaoProtocol, problem::Problems.OneWayCommunicationProblem)
 	for x=1:problem.n_X
 		if(rand() < 0.5)
 			new_state = realify(gen_rho(problem.C))
@@ -89,14 +74,13 @@ struct YaoSolverData <: InternalSolverDataType
 	SDP_POVMs
 	POVMs::Vector{Pair{Symmetric{VariableRef, Matrix{VariableRef}}}}
 	
-	function YaoSolverData(problem::OneWayCommunicationProblem; eps_abs = 1e-05)
-		dim = problem.C
-		
-		SDP_states = JuMP.Model(optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => eps_abs));	
+	function YaoSolverData(n_X::Int64, n_Y::Int64, dim::Int64; eps_abs = 1e-05)
+					
+		SDP_states = JuMP.Model(SDP_solver(eps_abs));	
 		set_silent(SDP_states)
-		states = [@variable(SDP_states, [1:2*dim, 1:2*dim], PSD) for x=1:problem.n_X]
+		states = [@variable(SDP_states, [1:2*dim, 1:2*dim], PSD) for x=1:n_X]
 		
-		for x=1:problem.n_X
+		for x=1:n_X
 			@constraint(SDP_states, sum(states[x][i,i] for i=1:dim) == 1) # Force the trace to be one
 			enforce_SDP_constraints(SDP_states, states[x])
 		end
@@ -104,20 +88,25 @@ struct YaoSolverData <: InternalSolverDataType
 		SDP_POVMs = JuMP.Model(optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => eps_abs));	
 		set_silent(SDP_POVMs)
 		
-		POVMs = [Pair(@variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD), @variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD)) for y=1:problem.n_Y]
+		POVMs = [Pair(@variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD), @variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD)) for y=1:n_Y]
 		Id = diagm([1.0 for i=1:2*dim])
-		for y=1:problem.n_Y
+		for y=1:n_Y
 			@constraint(SDP_POVMs, POVMs[y][1] + POVMs[y][2] .== Id)
 			enforce_SDP_constraints(SDP_POVMs, POVMs[y][1])
 			enforce_SDP_constraints(SDP_POVMs, POVMs[y][2])
 		end
 		new(SDP_states, states, SDP_POVMs, POVMs)
 	end
+	
+	function YaoSolverData(problem::Problems.OneWayCommunicationProblem; eps_abs = 1e-05)
+		YaoSolverData(problem.n_X, problem.n_Y, problem.C; eps_abs = eps_abs)
+	end
+	
 end
 
 ######################### Optimization functions #########################
 
-function improve_strategy!(problem::OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64}, data::YaoSolverData)
+function improve_strategy!(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64}, data::YaoSolverData)
 	@objective(data.SDP_states, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(protocol.POVMs[y][problem.f[x,y]+1] * data.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
 	optimize!(data.SDP_states)
 	for x=1:problem.n_X
@@ -133,7 +122,7 @@ function improve_strategy!(problem::OneWayCommunicationProblem, protocol::YaoPro
 	end	
 end
 
-function generate_hard_distribution_yao(problem::OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData)
+function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData)
 	function enforce_promise(model::Model, D::Matrix{VariableRef})::nothing
 		for x=1:problem.n_X
 			for y=1:problem.n_Y
@@ -147,7 +136,7 @@ function generate_hard_distribution_yao(problem::OneWayCommunicationProblem, pro
 	return generate_hard_distribution(problem, protocol, data; additional_constraints = enforce_promise)
 end
 
-function generate_hard_distribution_yao(problem::OneWayCommunicationProblem)
+function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem)
 	protocol = YaoProtocol(problem)
 	data = YaoSolverData(problem)
 	return generate_hard_distribution_yao(problem, protocol, data)
