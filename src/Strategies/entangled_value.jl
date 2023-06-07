@@ -1,4 +1,4 @@
-export EntangledStrategy, EntangledSolverData
+export EntangledStrategy, EntangledSolverData, extract_actual_strategy
 
 ######################### Strategy definition and helper functions #########################
 
@@ -68,8 +68,48 @@ end
 
 function evaluate_success_probability(game::Problems.Game, strategy::EntangledStrategy, distribution::Matrix{Float64})::Float64
 	return sum(distribution[x,y] * tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / 2 for (x,y,a,b) in game.R)
-
 end
+
+"""
+	extract_actual_strategy(strategy::EntangledStrategy, game::Problems.Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
+
+EntangledStrategy represents entangled strategies in a solver-friendly way, and not in the usual tensor product representation. This function 
+extracts a strategy in the usual form, over a composite system AB where dim A = dim B, two sets of complex POVMs over A and B respectively and an entangled state on AB.
+
+This function is not supposed to be useful for any other purpose than validation. """
+function extract_actual_strategy(strategy::EntangledStrategy, game::Problems.Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
+
+	A = Dict()
+	for pair in strategy.A
+		A[pair.first] = unrealify(pair.second)
+	end
+	
+	B = Dict()
+	for pair in strategy.B
+		B[pair.first] = transpose(unrealify(pair.second))
+	end
+	
+	tau = sum(A[(1,a)] for a=1:game.n_A)
+	dim = size(tau, 2)
+	D, U = eigen(tau)
+	println(D)
+	for pair in A
+		A[pair.first] = transpose(U) * pair.second * U
+		for i=1:dim
+			if(abs(D[i]) > 1e-8)
+				A[pair.first][i,i] /= D[i]
+			end
+		end
+	end
+	
+	for pair in B
+		B[pair.first] = transpose(U) * pair.second * U
+	end
+	delta = (i) -> [j==i ? 1 : 0 for j=1:dim]
+	return (A, B, sum(sqrt(D[i] / dim)  * kron(delta(i),delta(i)) for i=1:dim))
+end
+	
+
 
 function scramble_strategy!(strategy::EntangledStrategy, game::Problems.Game)
 	dim = div(size(strategy.A[(1,1)], 1), 2)
@@ -145,7 +185,7 @@ struct EntangledSolverData <: InternalSolverDataType
 			end
 		end
 		
-		for y=1:game.n_Y
+		for y=1:n_Y
 			@constraint(SDP_B, sum(B[(y,b)] for b=1:n_B) .== diagm([1.0 for i=1:2*dim]))
 		end
 		return new(SDP_A, A, SDP_B, B)
@@ -178,6 +218,22 @@ function improve_strategy!(game::Problems.Game, strategy::EntangledStrategy, dis
 	end	
 end
 
+entangled_warning = false
+
+function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; iterations = 50, eps_abs = 1e-06, trace_lower_bound = 1.0, impose_maximally_entangled = false)::Float64
+	global entangled_warning	
+	if(!(entangled_warning))
+		@warn "If you are calling this function multiple times during the execution of your program, consider building your own EntangledStrategy and EntangledSolverData objects\
+				and calling optimize_strategy! instead, as this will put less pressure on the garbage collector. "
+		entangled_warning = true
+	end
+	strategy = EntangledStrategy(game, dim)
+	data = EntangledSolverData(game, dim; eps_abs = eps_abs, trace_lower_bound = trace_lower_bound, impose_maximally_entangled = impose_maximally_entangled)
+	optimize_strategy!(game, strategy, distribution, data; max_iter = iterations)
+	return evaluate_success_probability(game, strategy, distribution)
+end
+	
+	
 
 # function find_good_entangled_protocol(problem::OneWayCommunicationProblem, dim::Int, distribution::Matrix{Float64}; impose_maximally_entangled = false, iterations = 50)
 	# R::Set{NTuple{4, Int64}} = Set()

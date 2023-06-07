@@ -1,8 +1,9 @@
 module Limitations
 
-include("../utils2.jl")
-include("../Problems/problems.jl")
-using .Problems
+include("../utils.jl")
+import ..Problems
+import ..LP_solver
+import ..SDP_solver
 
 include("sdp.jl")
 include("NPA_utils.jl")

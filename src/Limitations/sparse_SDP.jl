@@ -3,7 +3,8 @@ using SparseArrays
 using LinearAlgebra
 using Suppressor
 
-# We bypass the JuMP interface as it contains a large performance bottleneck (presumably due to poor handling of sparse matrices), and it's harder to pass it a callback function
+# For NPA hierarchies, we bypass the JuMP interface as the problems encountered tend to be very large and very sparse, and JuMP does not handle such problems well
+
 
 # Encodes that sum_{a in coeffs} a_3 X[a_1, a_2] ? b_val, where ? is = or >= 
 # For every (i,j) pair, there must be at most one tuple a in coeffs such that either a[1] = i, a[2] = j or a[1] = j, a[2] = i
@@ -15,7 +16,7 @@ end
 # Encodes a SDP of the form  
 #			min tr(PX)
 #			tr(A_iX) >= b_i, for every nonneg constraints
-#			tr(A_iX) = b_i,  for every eq constrait
+#			tr(A_iX) = b_i,  for every eq constraint
 #			X is positive semidefinite
 
 mutable struct SDP_Model
@@ -135,23 +136,6 @@ function find_dual_solution(model::SDP_Model, target_val::Float64 = Inf, iterati
 	N_t, M = size(model.A_t)
 	l_nn = length(model.constraints_nonneg)
 	
-	function callback(x, iter)
-		return false
-		for i=1:l_nn
-			if(x[i] < 0)
-				return false
-			end
-		end
-		if(target_val != Inf && abs(target_val - dot(model.b, x)) > 1e-04)
-			return false
-		end
-		if(isposdef(triangle_to_matrix_conversion(model.P-model.A_t*x, model.N)))
-			throw(found_y(x))
-		end
-		return false
-		
-	end
-	
 	constraints = [COSMO.Constraint(-model.A_t, model.P, COSMO.PsdConeTriangle)]
 	if(target_val != Inf) 
 		push!(constraints, COSMO.Constraint(sparse(transpose(model.b)), [-target_val], COSMO.ZeroSet))
@@ -161,8 +145,7 @@ function find_dual_solution(model::SDP_Model, target_val::Float64 = Inf, iterati
 		I_nonneg = sparse([i for i=1:l_nn], [i for i=1:l_nn], [1.0 for i=1:l_nn], l_nn, M)
 		push!(constraints, COSMO.Constraint(I_nonneg, sparsevec([0.0 for i=1:l_nn]), COSMO.Nonnegatives)) # y_i must be nonnegative for 1 <= y_i <= l_nn
 	end
-	assemble!(real_model, spzeros(M, M), -model.b, constraints, settings = COSMO.Settings(verbose=true, adaptive_rho = true, rho = 0.1, alpha = 1.0, accelerator = AndersonAccelerator{Float64, Type1, RollingMemory, NoRegularizer}, check_infeasibility = 1000, verbose_timing = true, check_termination = 20, eps_abs = 1e-12, sigma = 1e-07, eps_rel = 1e-12, decompose = false, eps_prim_inf = 1e-12, max_iter = iterations, callback = callback))
-
+	assemble!(real_model, spzeros(M, M), -model.b, constraints, settings = COSMO.Settings(verbose=true, adaptive_rho = true, rho = 0.1, alpha = 1.0, accelerator = AndersonAccelerator{Float64, Type1, RollingMemory, NoRegularizer}, check_infeasibility = 1000, verbose_timing = true, check_termination = 20, eps_abs = 1e-12, sigma = 1e-07, eps_rel = 1e-12, decompose = false, eps_prim_inf = 1e-12, max_iter = iterations))
 	
 	try
 		if(verbose)

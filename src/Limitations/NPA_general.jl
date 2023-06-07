@@ -1,10 +1,6 @@
 using COSMO
 using JuMP
-import Base.*
-import Base.==
-import Base.isequal
-import Base.length
-import Base.copy
+
 using SparseArrays
 using LinearAlgebra
 using Suppressor

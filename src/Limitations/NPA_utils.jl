@@ -1,5 +1,9 @@
 using Random
-
+import Base.*
+import Base.==
+import Base.isequal
+import Base.length
+import Base.copy
 
 # Type corresponding to a NPA object
 # Is expected to have subfields model for the corresponding SDP model as well as correlation_components::Dict{Tuple{Int,Int,Int,Int}, Tuple{Int,Int}} for the index in the

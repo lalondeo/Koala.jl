@@ -75,6 +75,31 @@ const MagicSquareGame = Game(3,3,4,4,V_magic_square_game)
 
 const CHSH = Game(2,2,2,2, (x,y,a,b) -> ((x==2)&&(y==2)) == (a!=b))
 
+function tilted_CHSH(p)
+	R::Set{NTuple{4, Int64}} = Set()
+	dist = zeros(2,4)
+	for x=1:2
+		y = 1
+		for _y=1:2
+			for c=1:2
+				dist[x,y] = 1/4 * (c==1 ? p : (1-p))
+				if(c == 1)
+					bit = ((x==2) && (_y == 2))
+					for a=1:2
+						push!(R, (x, y, a, (a + bit) % 2 + 1))
+					end
+				else
+					push!(R, (x,y,1,1))
+					push!(R, (x,y,1,2))
+				end
+				
+				y += 1
+			end
+		end
+	end
+	return (Game(2,4,2,2,R), dist)
+end
+			
 """
 	coloring_game(G::Matrix{Bool}, C::Int64)::Game
 

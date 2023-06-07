@@ -129,8 +129,7 @@ end
 """
 	generate_hard_distribution(N, oracle; max_iter = 1000, alpha = 0.003, M, = 10000 min_stabilization_iter = 50, trust_oracle = false, epsilon = 1e-03, time_until_suppression = 20, additional_constraints = (model, D) -> nothing)
 
-Given a distribution size N, a boolean vector legal_position indicating which indices of the distribution are to be forced to zero, 
-and an oracle which, given a distribution D on N elements, returns an array of N probabilities indicating the success probabilities for every index
+Given a distribution size N and an oracle which, given a distribution D on N elements, returns an array of N probabilities indicating the success probabilities for every index
 of whatever task is being studied, so that the average success probability under distribution D is maximal. 
 
 Benders decomposition (i.e. the dual of column generation) is run to generate a hard distribution, i.e. one so that for the task at hand, the success probability is minimal for any strategy. A simple stabilization

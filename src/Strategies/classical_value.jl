@@ -110,8 +110,12 @@ struct HasPerfectClassicalStrategyInfo
 	legal_outputs_bob::Matrix{Bool}
 	history::Array{Tuple{Int,Int,Int}}
 	branching::Array{Int}
+	function HasPerfectClassicalStrategyInfo(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64)
+		new(zeros(Bool, n_X, n_A), zeros(Bool, n_Y, n_B), [], [])
+	end
+	
 	function HasPerfectClassicalStrategyInfo(game::Problems.Game)
-		new(zeros(Bool, game.n_X, game.n_A), zeros(Bool, game.n_Y, game.n_B), [], [])
+		HasPerfectClassicalStrategyInfo(game.n_X, game.n_Y, game.n_A, game.n_B)
 	end
 end
 
