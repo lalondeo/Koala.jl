@@ -188,7 +188,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 		if(current_z > 0.5 + 1e-04)
 			duals = []
 			for constraint in keys(general_constraints)
-				push!(duals, getdual(constraint))
+				push!(duals, JuMP.dual(constraint))
 			end
 			println(sum(duals))
 			i_constraint = 1
