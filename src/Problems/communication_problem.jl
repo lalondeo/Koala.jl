@@ -31,9 +31,9 @@ any protocol for the communication problem with success probability p correspond
 function gameify(problem::OneWayCommunicationProblem)::Game
 	R::Set{NTuple{4, Int64}} = Set()
 	for x=1:problem.n_X	
-		for a=1:game.C
+		for a=1:problem.C
 			y = 1
-			for (_y, b) in Iterators.product(1:game.n_Y, 1:game.C)
+			for (_y, b) in Iterators.product(1:problem.n_Y, 1:problem.C)
 				if(a != b)
 					push!(R, (x,y,a,1))
 					push!(R, (x,y,a,2))
@@ -44,8 +44,25 @@ function gameify(problem::OneWayCommunicationProblem)::Game
 			end
 		end
 	end
-	return Game(game.n_X, game.n_Y*game.C, game.C, 2, R)
+	return Game(problem.n_X, problem.n_Y*problem.C, problem.C, 2, R)
 end
+
+"""
+	convert_distribution!(problem::OneWayCommunicationProblem, distribution_i::Matrix{Float64}, distribution_f::Matrix{Float64})
+
+Given a distribution distribution_i for the problem (which is a n_X times n_Y matrix), converts it into a distribution distribution_f (which is a n_X times (n_Y * C) matrix) for
+the gameified version of the problem.
+"""
+function convert_distribution!(problem::OneWayCommunicationProblem, distribution_i::Matrix{Float64}, distribution_f::Matrix{Float64})
+	for x=1:problem.n_X
+		y = 1
+		for (_y, c) in Iterators.product(1:problem.n_Y, 1:problem.C)
+			distribution_f[x,y] = distribution_i[x,_y] / problem.C
+			y += 1
+		end
+	end
+end
+
 
 
 ### Examples ###
@@ -53,7 +70,7 @@ function EQ(N, c)
 	return OneWayCommunicationProblem(N, N, c, (x,y) -> (x==y))
 end
 
-function promise_equality(G::Matrix{Float64}, c::Int64)
+function promise_equality(G::Matrix{Bool}, c::Int64)
 	n = size(G, 1)
 	f = zeros(Bool, n, n)
 	promise = zeros(Bool, n, n)
