@@ -182,7 +182,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 		end
 		
 		time_model += @elapsed optimize!(model)
-		current_distribution[:,:] .= JuMP.value.(D)
+		current_distribution .= JuMP.value.(D)
 
 		current_z = objective_value(model) - M * sum(JuMP.value.(gap_plus)) - M * sum(JuMP.value.(gap_minus))
 		if(current_z > 0.5 + 1e-04)
@@ -219,7 +219,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 				new_best_distribution = true
 			end
 		else
-			best_distribution[:,:] = current_distribution
+			best_distribution .= current_distribution
 			new_best_distribution = true
 		end
 		

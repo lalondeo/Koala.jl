@@ -6,6 +6,7 @@ abstract type ProblemType end
 
 include("../utils.jl")
 include("communication_problem.jl") 
+include("isomorphism.jl")
 
 
 """ 
