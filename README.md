@@ -6,4 +6,3 @@ A library for studying nonlocal games and related topics written in pure Julia. 
 - The classical NPA hierarchy for upper-bounding the commuting operators value of a game / communication complexity problem (along with an option to specialize to strategies employing a maximally entangled state)
 - The NPA hierarchy of Russell tailored for synchronous strategies, in particular for graph coloring
 - The graph parameter xi_SDP, which is a lower bound on the commuting operators value of a graph
-
