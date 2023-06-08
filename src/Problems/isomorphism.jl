@@ -154,7 +154,6 @@ function find_distinguished_representative(game::Game, info::RepresentativeInfo)
 			end
 		end
 	end
-			#return game
 	R = NTuple{4, Int64}[];
 	for (x,y,a,b) in game.R
 		push!(R, (info.best_perm_X[x], info.best_perm_Y[y], info.best_perm_A[a], info.best_perm_B[b]))

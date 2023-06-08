@@ -231,8 +231,8 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 				delete(model, c)
 			end
 			stabilizing_constraints = []
-			if(iter%10 != 0)
-				for c in  @constraint(model, D .- best_distribution .== gap_plus - gap_minus + allowed_gap)
+			if(iter % 10 != 0)
+				for c in @constraint(model, D .- best_distribution .== gap_plus - gap_minus + allowed_gap)
 					push!(stabilizing_constraints, c)
 				end
 			end
