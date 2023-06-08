@@ -89,7 +89,7 @@ struct YaoSolverData <: InternalSolverDataType
 			enforce_SDP_constraints(SDP_states, states[x])
 		end
 		
-		SDP_POVMs = JuMP.Model(optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => eps_abs));	
+		SDP_POVMs = JuMP.Model(SDP_solver(eps_abs));	
 		set_silent(SDP_POVMs)
 		
 		POVMs = [Pair(@variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD), @variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD)) for y=1:n_Y]
