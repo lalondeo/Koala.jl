@@ -5,24 +5,23 @@ using Random
 
 ######################### String manipulations #########################
 
-function encode_char(tab::Array{Bool})::Char
-	return(Char(128+sum(2^(7-i) * tab[i] for i=1:length(tab))))
+function encode_char(tab::Vector{Bool})::Char
+    length(tab) <= 6
+    return(Char(63+sum(2^(6-i) * tab[i] for i=1:length(tab))))
 end
 
-function decode_char(_c::Char)::Array{Bool}
-	c = Int(_c)
-	return [((c & 2^(7-i)) != 0) for i=1:7]
+function decode_char(_c::Char)::Vector{Bool}
+    c = Int(_c) - 63
+    return [((c & 2^(6-i)) != 0) for i=1:6]
 end
 
-
-function encode_binary_array(tab::Array{Bool})::String
-	return string([encode_char(tab[i:i+6]) for i=1:7:length(tab)]...)
+function encode_binary_array(tab::Vector{Bool})::String
+    return string([encode_char(tab[i:min(i+5, length(tab))]) for i=1:6:length(tab)]...)                                                                                                                                                                            
 end
 
-function decode_binary_array(str::String, n::Int)::Array{Bool}
-	return vcat([decode_char(c) for c in str]...)[1:n]
+function decode_binary_array(str::String, n::Int)::Vector{Bool}
+    return vcat([decode_char(c) for c in str]...)[1:n]
 end
-
 
 
 ######################### Complex hermitian matrix modelling #########################

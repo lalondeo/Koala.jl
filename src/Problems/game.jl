@@ -1,7 +1,5 @@
 export Game, encode_game, decode_game, MagicSquareGame, CHSH, coloring_game
 
-using Combinatorics
-
 struct Game <: ProblemType
 	n_X::Int64
 	n_Y::Int64
@@ -28,6 +26,7 @@ struct Game <: ProblemType
 		new(n_X, n_Y, n_A, n_B, R)
 	end
 end
+
 
 function encode_game(G::Game)::String
 	tab = [false for i=1:G.n_X * G.n_Y * G.n_A * G.n_B]
@@ -63,6 +62,7 @@ function decode_game(str::String, n_X, n_Y, n_A, n_B)::Game
 	end
 	return Game(n_X, n_Y, n_A, n_B, R)
 end
+
 
 
 ### Examples ###
@@ -128,6 +128,31 @@ function coloring_game(G::Matrix{Bool}, C::Int64)::Game
 	end
 	return Game(n, n, C, C, R)
 end
+
+
+
+Vs = [[1;0;0],[0;1;0],[0;0;1],[1;1;0],[1;-1;0],[1;0;1],[1;0;-1],[0;1;1],[0;1;-1],[1;1;1],[1;1;-1],[1;-1;1],[-1;1;1]]
+
+const G_13 = zeros(Bool, 13, 13);
+for i=1:13
+	for j=1:13
+		if(dot(Vs[i], Vs[j]) == 0)
+			G_13[i,j] = true
+		end
+	end
+end
+
+const G_14 = zeros(Bool, 14, 14);
+for i=1:13
+	for j=1:13
+		G_14[i,j] = G_13[i,j]
+	end
+	G_14[i,14] = true
+	G_14[14,i] = true
+end
+
+
+
 				
 
 

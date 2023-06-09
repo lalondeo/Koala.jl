@@ -1,8 +1,6 @@
+export YaoProtocol, YaoSolverData, generate_hard_distribution_yao, optimize_yao
 
-
-export YaoProtocol, YaoSolverData, generate_hard_distribution_yao
-
-######################### Strategy definition and helper functions #########################
+######################### Protocol definition and helper functions #########################
 
 
 struct YaoProtocol <: StrategyType
@@ -125,6 +123,27 @@ function improve_strategy!(problem::Problems.OneWayCommunicationProblem, protoco
 		end
 	end	
 end
+
+yao_warning = false
+"""
+	optimize_yao(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+	
+Given a game and a distribution on the inputs, returns a lower bound on the best achievable winning probability classically. If this function
+is to be called repeatedly, consider builidng the ClassicalStrategy and ClassicalSolverData objects and calling optimize_strategy! directly. """
+function optimize_yao(problem::Problems.OneWayCommunicationProblem, distribution::Matrix{Float64}; iterations = 50)::Float64
+	global yao_warning	
+	if(!(yao_warning))
+		@warn "If you are calling this function multiple times during the execution of your program, consider building your own YaoProtocol and YaoSolverData objects\
+				and calling optimize_strategy! instead, as this will put less pressure on the garbage collector. "
+		yao_warning = true
+	end
+	strategy = YaoProtocol(problem)
+	data = YaoSolverData(problem)
+	optimize_strategy!(problem, strategy, distribution, data; max_iter = iterations)
+	return evaluate_success_probability(problem, strategy, distribution)
+end
+
+######################### Distributional things #########################
 
 function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData)
 	function enforce_promise(model::Model, D::Matrix{VariableRef})::nothing

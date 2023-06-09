@@ -1,5 +1,5 @@
 
-export ClassicalStrategy, ClassicalSolverData
+export ClassicalStrategy, ClassicalSolverData, optimize_classical_strategy
 
 ######################### Strategy definition and helper functions #########################
 
@@ -101,4 +101,25 @@ function improve_strategy!(game::Problems.Game, strategy::ClassicalStrategy, dis
 	for y=1:game.n_Y
 		strategy.outputs_Bob[y] = argmax(data.T_y[y,:])
 	end
+end
+
+classical_warning = false
+
+
+"""
+	optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+	
+Given a game and a distribution on the inputs, returns a lower bound on the best achievable winning probability classically. If this function
+is to be called repeatedly, consider builidng the ClassicalStrategy and ClassicalSolverData objects and calling optimize_strategy! directly. """
+function optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+	global classical_warning	
+	if(!(classical_warning))
+		@warn "If you are calling this function multiple times during the execution of your program, consider building your own ClassicalStrategy and ClassicalSolverData objects\
+				and calling optimize_strategy! instead, as this will put less pressure on the garbage collector. "
+		classical_warning = true
+	end
+	strategy = ClassicalStrategy(game)
+	data = ClassicalSolverData(game)
+	optimize_strategy!(game, strategy, distribution, data; max_iter = iterations)
+	return evaluate_success_probability(game, strategy, distribution)
 end

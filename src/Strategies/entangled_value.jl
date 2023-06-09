@@ -1,4 +1,4 @@
-export EntangledStrategy, EntangledSolverData, extract_actual_strategy
+export EntangledStrategy, EntangledSolverData, extract_actual_strategy, optimize_entangled_strategy
 
 ######################### Strategy definition and helper functions #########################
 
@@ -220,6 +220,11 @@ end
 
 entangled_warning = false
 
+"""
+	optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; iterations = 50, eps_abs = 1e-06, trace_lower_bound = 1.0, impose_maximally_entangled = false)::Float64
+	
+Given a game, a distribution on the inputs and the local dimension of the joint entangled state, returns a lower bound on the best achievable winning probability in the tensor product model. If this function
+is to be called repeatedly, consider builidng the EntangledStrategy and EntangledSolverData objects and calling optimize_strategy! directly. """
 function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; iterations = 50, eps_abs = 1e-06, trace_lower_bound = 1.0, impose_maximally_entangled = false)::Float64
 	global entangled_warning	
 	if(!(entangled_warning))
@@ -234,21 +239,3 @@ function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{F
 end
 	
 	
-
-# function find_good_entangled_protocol(problem::OneWayCommunicationProblem, dim::Int, distribution::Matrix{Float64}; impose_maximally_entangled = false, iterations = 50)
-	# R::Set{NTuple{4, Int64}} = Set()
-	# new_distribution = zeros(Float64, problem.n_X, problem.n_Y * problem.c)
-	# unsplit_y = (y) -> ((y-1)%problem.c + 1, div(y-1-(y-1)%problem.c, problem.c)+1)
-
-	# for x=1:problem.n_X
-		# for y=1:problem.n_Y * problem.c
-			# new_distribution[x,y] = 1/problem.c * distribution[x, unsplit_y(y)[2]]
-		# end
-	# end
-	
-	# V = (x,y,a,b) -> (a != unsplit_y(y)[1]) || (b - 1 == problem.f(x, unsplit_y(y)[2]))
-
-	# game = Problems.Game(problem.n_X, problem.n_Y * problem.c, problem.c, 2, V)
-	# prob = dot(new_distribution, optimize_entanglement(game, dim, new_distribution; impose_maximally_entangled = impose_maximally_entangled, iterations = iterations))
-	# return problem.c * prob - problem.c + 1
-# end

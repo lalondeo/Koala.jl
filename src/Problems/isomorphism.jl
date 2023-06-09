@@ -1,5 +1,7 @@
 export RepresentativeInfo, find_distinguished_representative
 
+using Combinatorics
+
 function build_iterator(tab::Vector{Int32})
 	dictionary = Tuple{Int32,Int32}[]
 	for i=1:length(tab)
@@ -86,6 +88,9 @@ function find_distinguished_representative(game::Game, info::RepresentativeInfo)
 	info.vals_A .= 0
 	info.vals_B .= 0
 	
+	# The first step is to assign numerical values to every input and output that are invariant under permutations of the other inputs / outputs
+	# We then list all games that are isomorphic to the game in input with the property that for every input/output, the aforementioned numerical values are sorted, hash
+	# each one, and output the one with the largest hash
 	vals = (info.vals_X, info.vals_Y, info.vals_A, info.vals_B)
 
 	sizes = (game.n_X, game.n_Y, game.n_A, game.n_B)

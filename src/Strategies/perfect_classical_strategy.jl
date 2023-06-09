@@ -1,4 +1,6 @@
-export HasPerfectClassicalStrategyInfo, has_perfect_classical_strategy!
+using Combinatorics
+
+export HasPerfectClassicalStrategyInfo, has_perfect_classical_strategy!, has_perfect_classical_strategy, game_is_critical!, game_is_critical
 
 struct HasPerfectClassicalStrategyInfo
 	legal_outputs_alice::Matrix{Bool}
@@ -19,7 +21,9 @@ end
 	has_perfect_classical_strategy!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
 
 Given a game, a strategy object for said game (the contents of which are irrelevant) and an instance of HasPerfectClassicalStrategyInfo, determines whether
-the given game has a perfect classical strategy or not. Unlike the other optimization functions in this module which are heuristic, this function is exact. """
+the given game has a perfect classical strategy or not. Unlike the other optimization functions in this module which are heuristic, this function is exact. If an exact strategy is found, 
+it will be stored in strategy. 
+ """
 function has_perfect_classical_strategy!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
 	info.legal_outputs_alice .= true
 	info.legal_outputs_bob .= true
@@ -28,6 +32,7 @@ function has_perfect_classical_strategy!(game::Problems.Game, strategy::Classica
 	empty!(info.history)
 	empty!(info.branching)
 	
+	# Adaptation of the standard backtracking algorithm for graph coloring
 	if(game.n_A <= game.n_B)
 		push!(info.branching, 1)
 	else
@@ -36,6 +41,8 @@ function has_perfect_classical_strategy!(game::Problems.Game, strategy::Classica
 	k = 1
 	while(k > 0 && k <= game.n_X + game.n_Y)
 		if(k > length(info.branching))
+			# Choosing the next input to branch on
+			# We select the input with the smallest number of legal outputs
 			best_score = 1000
 			best_var = -1
 			for x=1:game.n_X
@@ -134,4 +141,55 @@ function has_perfect_classical_strategy!(game::Problems.Game, strategy::Classica
 	end
 	
 	return k != 0
+end
+
+
+
+"""
+	has_perfect_classical_strategy(game::Problems.Game)::Bool
+
+Given a game, determines whether the given game has a perfect classical strategy or not. Unlike the other optimization functions in this module which are heuristic, this function is exact. """
+function has_perfect_classical_strategy(game::Problems.Game)::Bool
+	strategy = ClassicalStrategy(game)
+	info = HasPerfectClassicalStrategyInfo(game)
+	return has_perfect_classical_strategy!(game, strategy, info)
+end
+
+"""
+	game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
+
+Given a game and the required data, determines whether the game is classically critical, i.e. if the game does not have a perfect classical strategy and 
+if adding any answer to the game causes it to have a perfect classical strategy. """
+function game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
+	if(has_perfect_classical_strategy!(game, strategy, info))
+		return false
+	end
+	
+	for x=1:game.n_X
+		for y=1:game.n_Y
+			for a=1:game.n_A
+				for b=1:game.n_B
+					if(!((x,y,a,b) in game.R))
+						push!(game.R, (x,y,a,b))
+						if(!(has_perfect_classical_strategy!(game, strategy, info)))
+							return false
+						end
+						pop!(game.R, (x,y,a,b))
+					end
+				end
+			end
+		end
+	end
+	return true
+end
+
+"""
+	game_is_critical(game::Problems.Game)
+
+Given a game, determines whether the game is classically critical, i.e. if the game does not have a perfect classical strategy and 
+if adding any answer to the game causes it to have a perfect classical strategy. """
+function game_is_critical(game::Problems.Game)
+	strategy = ClassicalStrategy(game)
+	info = HasPerfectClassicalStrategyInfo(game)
+	return game_is_critical!(game, strategy, info)
 end
