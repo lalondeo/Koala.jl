@@ -12,7 +12,7 @@ function upper_bound_dist(game::Problems.Game, distribution::Matrix{Float64}, in
 	end
 	
 	compile_pseudo_objective!(info.model; offset = offset)	
-	y = find_dual_solution(info.model, target, iter; verbose = verbose)
+	y = find_dual_solution(info.model, -target, iter; verbose = verbose)
 	if(validate_dual_solution(info.model, y) < 1e-03)
 		return -dot(info.model.b, y)
 	else
@@ -49,7 +49,7 @@ function upper_bound_worst_case(game::Problems.Game, info::T; verbose = false, i
 		end
 	end
 	compile_constraints!(info.model)
-	y = find_dual_solution(info.model, target, iter; verbose = verbose)
+	y = find_dual_solution(info.model, -target, iter; verbose = verbose)
 	res = Inf
 	if(validate_dual_solution(info.model, y) < 1e-03)
 		res = -dot(info.model.b, y)
@@ -82,7 +82,7 @@ function upper_bound_worst_case(problem::Problems.OneWayCommunicationProblem, in
 		end
 	end	
 	compile_constraints!(info.model)
-	y = find_dual_solution(info.model, target, iter; verbose = verbose)
+	y = find_dual_solution(info.model, -target, iter; verbose = verbose)
 	res = Inf
 	if(validate_dual_solution(info.model, y) < 1e-03)
 		res = -dot(info.model.b, y)
