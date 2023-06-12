@@ -23,7 +23,7 @@ LP_solver = () -> (cplex_available ? CPLEX.Optimizer : HiGHS.Optimizer)
 
 include("Problems/problems.jl")
 include("Strategies/strategies.jl")
-#include("Limitations/limitations.jl")
+include("Limitations/limitations.jl")
 
 end
 	
