@@ -143,6 +143,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	model = Model(LP_solver())
 	set_silent(model)
 	
+	
 	@variable(model, D[1:n_X, 1:n_Y]; lower_bound = 0.0)
 	@constraint(model, sum(D) == 1) 
 	additional_constraints(model, D)
@@ -190,7 +191,6 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 			for constraint in keys(general_constraints)
 				push!(duals, JuMP.dual(constraint))
 			end
-			println(sum(duals))
 			i_constraint = 1
 			for constraint in keys(general_constraints)
 				if(duals[i_constraint] < 1e-05)
@@ -243,8 +243,8 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	return best_distribution
 end
 
-function generate_hard_distribution(problem::P, strategy::S, data::I; additional_constraints = (model, D) -> nothing, full_optimization_probability = 0.2, optimization_iter_regular = 5, 
-	optimization_iter_extended = 50, max_iter = 1000) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+function generate_hard_distribution(problem::P, strategy::S, data::I; full_optimization_probability = 0.2, optimization_iter_regular = 5, 
+	optimization_iter_extended = 50, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	test_strategy = deepcopy(strategy)
 	
 	function oracle!(distribution::Matrix{Float64}, success_probabilities::Matrix{Float64})
@@ -258,8 +258,7 @@ function generate_hard_distribution(problem::P, strategy::S, data::I; additional
 		evaluate_success_probabilities!(problem, strategy, success_probabilities)
 	end
 	
-	return generate_hard_distribution(problem.n_X, problem.n_Y, oracle!; max_iter=300, alpha = 0.1, M = 100, min_stabilization = 5, trust_oracle = false, epsilon = 1e-03,
-									time_until_suppression = 30, additional_constraints = (model, D) -> nothing)
+	return generate_hard_distribution(problem.n_X, problem.n_Y, oracle!; solver_args...)
 end
 
 

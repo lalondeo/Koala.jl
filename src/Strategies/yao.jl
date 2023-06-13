@@ -145,7 +145,8 @@ end
 
 ######################### Distributional things #########################
 
-function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData)
+
+function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData; kwargs...)
 	function enforce_promise(model::Model, D::Matrix{VariableRef})::nothing
 		for x=1:problem.n_X
 			for y=1:problem.n_Y
@@ -156,12 +157,12 @@ function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationPro
 		end
 	end
 	
-	return generate_hard_distribution(problem, protocol, data; additional_constraints = enforce_promise)
+	return generate_hard_distribution(problem, protocol, data; additional_constraints = enforce_promise, kwargs...)
 end
 
-function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem)
+function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem; kwargs...)
 	protocol = YaoProtocol(problem)
 	data = YaoSolverData(problem)
-	return generate_hard_distribution_yao(problem, protocol, data)
+	return generate_hard_distribution_yao(problem, protocol, data; kwargs...)
 end
 				
