@@ -169,7 +169,7 @@ struct NPAGeneral <: NPA
 		end
 		new(n_X, n_Y, n_A, n_B, level, correlation_components, model)
 	end
-	function NPAGeneral(game::Problems.game, level::Int64; filtering::Filtering = full, impose_maximally_entangled = false)
+	function NPAGeneral(game::Problems.Game, level::Int64; filtering::Filtering = full, impose_maximally_entangled = false)
 		NPAGeneral(game.n_X, game.n_Y, game.n_A, game.n_B, level; filtering = filtering, impose_maximally_entangled = impose_maximally_entangled)
 	end
 	
