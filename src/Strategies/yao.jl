@@ -147,7 +147,7 @@ end
 
 
 function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData; kwargs...)
-	function enforce_promise(model::Model, D::Matrix{VariableRef})::nothing
+	function enforce_promise(model::Model, D::Matrix{VariableRef})
 		for x=1:problem.n_X
 			for y=1:problem.n_Y
 				if(!(problem.promise[x,y]))
