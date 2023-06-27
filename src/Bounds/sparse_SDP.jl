@@ -122,15 +122,11 @@ function triangle_to_matrix_conversion(v, n)
 	return M
 end
 
-struct found_y
-	y::Array{Float64}
-end
 
-function find_dual_solution(model::SDP_Model, target_val::Float64 = Inf, iterations::Int64 = 5000; verbose = true)
+function find_dual_solution(model::SDP_Model; target_val::Float64 = Inf, kwargs...)
 	real_model = COSMO.Model()	
 	N_t, M = size(model.A_t)
 	l_nn = length(model.constraints_nonneg)
-	
 	constraints = [COSMO.Constraint(-model.A_t, model.P, COSMO.PsdConeTriangle)]
 	if(target_val != Inf) 
 		push!(constraints, COSMO.Constraint(sparse(transpose(model.b)), [-target_val], COSMO.ZeroSet))
@@ -140,19 +136,12 @@ function find_dual_solution(model::SDP_Model, target_val::Float64 = Inf, iterati
 		I_nonneg = sparse([i for i=1:l_nn], [i for i=1:l_nn], [1.0 for i=1:l_nn], l_nn, M)
 		push!(constraints, COSMO.Constraint(I_nonneg, sparsevec([0.0 for i=1:l_nn]), COSMO.Nonnegatives)) # y_i must be nonnegative for 1 <= y_i <= l_nn
 	end
-	assemble!(real_model, spzeros(M, M), -model.b, constraints, settings = COSMO.Settings(verbose=true, adaptive_rho = true, rho = 0.1, alpha = 1.0,  check_infeasibility = 1000, verbose_timing = true, check_termination = 20, eps_abs = 1e-12, sigma = 1e-07, eps_rel = 1e-07, decompose = false, eps_prim_inf = 1e-07, max_iter = iterations))
-	
-	try
-		if(verbose)
-			res = COSMO.optimize!(real_model)
-			return res.x
-		else
-			@suppress res = COSMO.optimize!(real_model)
-			return res.x
-		end
-	catch e
-		return e.y
-	end
+
+	assemble!(real_model, spzeros(M, M), -model.b, constraints, settings = COSMO.Settings(;kwargs...))
+
+		res = COSMO.optimize!(real_model)
+		return res.x
+
 	
 end
 

@@ -1,5 +1,7 @@
 export EntangledStrategy, EntangledSolverData, extract_actual_strategy, optimize_entangled_strategy
 
+
+
 ######################### Strategy definition and helper functions #########################
 
 struct EntangledStrategy <: StrategyType
@@ -61,13 +63,21 @@ end
 
 function evaluate_success_probabilities!(game::Problems.Game, strategy::EntangledStrategy, success_probabilities::Matrix{Float64})
 	success_probabilities .= 0.0
-	for (x,y,a,b) in game.R
-		success_probabilities[x,y] += tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / 2
+	for x=1:game.n_X
+		for y=1:game.n_Y
+			for a=1:game.n_A
+				for b=1:game.n_B
+					if(game.R[x,y,a,b])
+						success_probabilities[x,y] += tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / 2
+					end
+				end
+			end
+		end
 	end
 end
 
 function evaluate_success_probability(game::Problems.Game, strategy::EntangledStrategy, distribution::Matrix{Float64})::Float64
-	return sum(distribution[x,y] * tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / 2 for (x,y,a,b) in game.R)
+	return sum(game.R[x,y,a,b] ? (distribution[x,y] * tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / 2) : 0 for x=1:game.n_X for y=1:game.n_Y for a=1:game.n_A for b=1:game.n_B)
 end
 
 """
@@ -147,7 +157,7 @@ struct EntangledSolverData <: InternalSolverDataType
 		- eps_abs: the tolerance for the SDP solver
 		- trace_lower_bound: A lower bound that is imposed on the traces of the POVMs. This was observed to help a lot with finding the best strategy in some cases.
 		- impose_maximally_entangled: whether the joint state should be forced to be maximally entangled. """
-	function EntangledSolverData(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64, dim::Int; eps_abs::Float64 = 1e-06, trace_lower_bound::Float64 = 1.0, impose_maximally_entangled = false)
+	function EntangledSolverData(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64, dim::Int; eps_abs::Float64 = 1e-06, trace_lower_bound::Float64 = 1.0, impose_maximally_entangled = false, kwargs...)
 		### Building SDP_A ###
 		SDP_A = JuMP.Model(SDP_solver(eps_abs));
 		set_silent(SDP_A)
@@ -191,8 +201,8 @@ struct EntangledSolverData <: InternalSolverDataType
 		return new(SDP_A, A, SDP_B, B)
 	end
 	
-	function EntangledSolverData(game::Problems.Game, dim::Int; eps_abs::Float64 = 1e-06, trace_lower_bound::Float64 = 1.0, impose_maximally_entangled = false)
-		EntangledSolverData(game.n_X, game.n_Y, game.n_A, game.n_B, dim; eps_abs = eps_abs, trace_lower_bound = trace_lower_bound, impose_maximally_entangled = impose_maximally_entangled)
+	function EntangledSolverData(game::Problems.Game, dim::Int; kwargs...)
+		EntangledSolverData(game.n_X, game.n_Y, game.n_A, game.n_B, dim; kwargs...)
 	end
 	
 end	
@@ -201,7 +211,7 @@ end
 
 function improve_strategy!(game::Problems.Game, strategy::EntangledStrategy, distribution::Matrix{Float64}, data::EntangledSolverData)
 	#@objective(data.SDP_A, Max, sum(distribution[x,y] * (((x,y,a,b) in game.R) ? tr(strategy.B[(y,b)] * data.A[(x,a)]) : 0) for a=1:game.n_A for b=1:game.n_B for x=1:game.n_X for y=1:game.n_Y))
-	@objective(data.SDP_A, Max, sum(distribution[x,y] * tr(data.A[(x,a)] * strategy.B[(y,b)]) for (x,y,a,b) in game.R))
+	@objective(data.SDP_A, Max, sum(game.R[x,y,a,b] ? (distribution[x,y] * tr(data.A[(x,a)] * strategy.B[(y,b)])) : 0 for x=1:game.n_X for y=1:game.n_Y for a=1:game.n_A for b=1:game.n_B))
 	optimize!(data.SDP_A)
 	for x=1:game.n_X
 		for a=1:game.n_A
@@ -209,7 +219,7 @@ function improve_strategy!(game::Problems.Game, strategy::EntangledStrategy, dis
 		end
 	end
 	
-	@objective(data.SDP_B, Max, sum(distribution[x,y] * tr(strategy.A[(x,a)] * data.B[(y,b)]) for (x,y,a,b) in game.R))
+	@objective(data.SDP_B, Max, sum(game.R[x,y,a,b] ? (distribution[x,y] * tr(strategy.A[(x,a)] * data.B[(y,b)])) : 0 for x=1:game.n_X for y=1:game.n_Y for a=1:game.n_A for b=1:game.n_B))
 	optimize!(data.SDP_B)
 	for y=1:game.n_Y
 		for b=1:game.n_B
@@ -221,11 +231,11 @@ end
 entangled_warning = false
 
 """
-	optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; iterations = 50, eps_abs = 1e-06, trace_lower_bound = 1.0, impose_maximally_entangled = false)::Float64
+	optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; kwargs...)::Float64
 	
-Given a game, a distribution on the inputs and the local dimension of the joint entangled state, returns a lower bound on the best achievable winning probability in the tensor product model. If this function
+Given a game, a distribution on the inputs and the local dimension of the joint entangled state, returns a lower bound on the best achievable winning probability in the tensor product model by calling optimize_strategy!. If this function
 is to be called repeatedly, consider builidng the EntangledStrategy and EntangledSolverData objects and calling optimize_strategy! directly. """
-function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; iterations = 50, eps_abs = 1e-06, trace_lower_bound = 1.0, impose_maximally_entangled = false)::Float64
+function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; kwargs...)::Float64
 	global entangled_warning	
 	if(!(entangled_warning))
 		@warn "If you are calling this function multiple times during the execution of your program, consider building your own EntangledStrategy and EntangledSolverData objects\
@@ -233,8 +243,8 @@ function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{F
 		entangled_warning = true
 	end
 	strategy = EntangledStrategy(game, dim)
-	data = EntangledSolverData(game, dim; eps_abs = eps_abs, trace_lower_bound = trace_lower_bound, impose_maximally_entangled = impose_maximally_entangled)
-	optimize_strategy!(game, strategy, distribution, data; max_iter = iterations)
+	data = EntangledSolverData(game, dim; kwargs...)
+	optimize_strategy!(game, strategy, distribution, data; kwargs...)
 	return evaluate_success_probability(game, strategy, distribution)
 end
 	

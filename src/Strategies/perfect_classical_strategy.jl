@@ -95,7 +95,7 @@ function has_perfect_classical_strategy!(game::Problems.Game, strategy::Classica
 			for y=1:game.n_Y
 				if(strategy.outputs_Bob[y] == 0)
 					for b=1:game.n_B
-						if(info.legal_outputs_bob[y,b] && !((x,y,strategy.outputs_Alice[x],b) in game.R))
+						if(info.legal_outputs_bob[y,b] && !(game.R[x,y,strategy.outputs_Alice[x],b]))
 							push!(info.history, (k, y, b))
 							info.legal_outputs_bob[y,b] = false
 						end
@@ -129,7 +129,7 @@ function has_perfect_classical_strategy!(game::Problems.Game, strategy::Classica
 			for x=1:game.n_X
 				if(strategy.outputs_Alice[x] == 0)
 					for a=1:game.n_A
-						if(info.legal_outputs_alice[x,a] && !((x,y,a,strategy.outputs_Bob[y]) in game.R))
+						if(info.legal_outputs_alice[x,a] && !(game.R[x,y,a,strategy.outputs_Bob[y]]))
 							push!(info.history, (k, x, a))
 							info.legal_outputs_alice[x,a] = false
 						end
@@ -169,12 +169,12 @@ function game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, inf
 		for y=1:game.n_Y
 			for a=1:game.n_A
 				for b=1:game.n_B
-					if(!((x,y,a,b) in game.R))
-						push!(game.R, (x,y,a,b))
+					if(!(game.R[x,y,a,b]))
+						game.R[x,y,a,b] = true
 						if(!(has_perfect_classical_strategy!(game, strategy, info)))
 							return false
 						end
-						pop!(game.R, (x,y,a,b))
+						game.R[x,y,a,b] = false
 					end
 				end
 			end

@@ -1,4 +1,4 @@
-module Limitations
+module Bounds
 
 include("../utils.jl")
 import ..Problems

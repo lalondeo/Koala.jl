@@ -3,8 +3,6 @@ using LinearAlgebra
 using RandomMatrices
 import Base.copyto!
 
-
-
 abstract type StrategyType end
 abstract type InternalSolverDataType end
 
@@ -71,7 +69,7 @@ end
 
 
 function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false, verbose = false, kwargs...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 				
 	old_value = 0
 	best_value = 0
@@ -82,6 +80,10 @@ function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribut
 		copy_strategy = false
 		improve_strategy!(problem, test_strategy, distribution, solver_data)
 		value = evaluate_success_probability(problem, test_strategy, distribution)
+		if(verbose)
+			println("*** $(i)/$(max_iter): $(value), best so far is $(best_value)")
+		end
+		
 		if(abs(value - old_value) < epsilon || value > 1 - epsilon)
 			
 			if(value > best_value)
@@ -111,16 +113,14 @@ function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribut
 end
 
 """
-optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problem where S <: Strategy where I <: InternalSolverData
+optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I;  kwargs...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 				
 	Given a problem, an initial strategy for said problem, a distribution on the inputs and a InternalSolverData object solver\\_data, attempts to repeatedly improve the strategy by means of 
 	improve_strategy! until a local maximum is reached to within an accuracy of epsilon. When this happens, the solver either stops or scrambles the strategy and keeps on trying to improve it, 
 	depending on the value of stop_at_local_maximum. At the end of the process, the contents of strategy is the best-scoring strategy found so far.
 """
-function optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
-	return optimize_strategy!(problem, strategy, deepcopy(strategy), distribution, solver_data; max_iter=max_iter, epsilon = epsilon, stop_at_local_maximum = stop_at_local_maximum)
+function optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I;  kwargs...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	return optimize_strategy!(problem, strategy, deepcopy(strategy), distribution, solver_data; kwargs...)
 end
 
 
@@ -138,14 +138,24 @@ a free gap of alpha between the old and the new distribution in allowed in infin
 Stabilization kicks in at iteration min\\_stabilization. We wait until applying stabilization because there's no trouble with convergence initially. trust\\_oracle corresponds to whether the oracle solves the optimization problem exactly or only approximately. If set to true, 
 a halting condition will be checked (namely, if the gap between the primal and dual values is no greater than epsilon), while if not, the full max\\_iter iterations will be run. Success probabilities 
 with corresponding dual variable equal to zero for time\\_until\\_suppression iterations are thrown out. Additionally, additional_constraints is a function that is given the model and D and is permitted to add constraints on the allowed distributions."""
-function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; max_iter=1000, alpha = 0.003, M = 100, min_stabilization = 50, trust_oracle = false, epsilon = 1e-03,
-									time_until_suppression = 20, additional_constraints = (model, D) -> nothing, verbose = true)
+function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; max_iter=1000, alpha = 0.001, M = 100000, min_stabilization = 50, trust_oracle = false, epsilon = 1e-03,
+									time_until_suppression = 20, additional_constraints = (model, D) -> nothing, verbose = true, kwargs...)
 	model = Model(LP_solver())
 	set_silent(model)
 	
 	
 	@variable(model, D[1:n_X, 1:n_Y]; lower_bound = 0.0)
 	@constraint(model, sum(D) == 1) 
+	if(haskey(kwargs, :promise))
+		for x=1:n_X
+			for y=1:n_Y
+				if(!kwargs[:promise][x,y])
+					@constraint(model, D[x,y] == 0)
+				end
+			end
+		end
+	end
+	
 	additional_constraints(model, D)
 	
 	@variable(model, z >= 0) # Best winning probability in the worst case so far
@@ -165,7 +175,8 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	
 	time_init = time()
 	
-	general_constraints = Dict() # Constraints to how long since the constraint had a nonzero reduced cost: constraints whose reduced cost has been zero for too long are deleted
+	uselessness_count = Dict{ConstraintRef, Int64}() # Constraints to how long since the constraint had a nonzero reduced cost: constraints whose reduced cost has been zero for too long are deleted
+	
 	stabilizing_constraints = [] 
 	current_z = 0;
 	
@@ -174,40 +185,48 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	success_probabilities = zeros(n_X, n_Y)
 	least_avg_success_probability = 1.0
 	new_best_distribution = false
-
+	
+	
 	for iter=1:max_iter
+	
+		if(iter % 5 == 0)
+			@objective(model, Min, z) # + M * sum(gap_plus) + M * sum(gap_minus))
+		else
+			@objective(model, Min, z + M * sum(gap_plus) + M * sum(gap_minus))
+		end
 		if(verbose)
 			println("---$(iter)---")
 			println("TOTAL TIME: ", time() - time_init, ", TIME MODEL: ", time_model, ", TIME ORACLE: ", time_oracle)
 			println("CURRENT Z: $(current_z)")
+			display(best_distribution)
 		end
 		
 		time_model += @elapsed optimize!(model)
 		current_distribution .= JuMP.value.(D)
-
-		current_z = objective_value(model) - M * sum(JuMP.value.(gap_plus)) - M * sum(JuMP.value.(gap_minus))
+		current_z = objective_value(model) - (iter % 5 == 0 ? 0 : M * sum(JuMP.value.(gap_plus)) + M * sum(JuMP.value.(gap_minus)))
 		if(current_z > 0.5 + 1e-04)
 			duals = []
-			for constraint in keys(general_constraints)
+			for constraint in keys(uselessness_count)
 				push!(duals, JuMP.dual(constraint))
 			end
 			i_constraint = 1
-			for constraint in keys(general_constraints)
+			for constraint in keys(uselessness_count)
 				if(duals[i_constraint] < 1e-05)
-					general_constraints[constraint] += 1
-					if(general_constraints[constraint] > time_until_suppression)
-						delete!(general_constraints, constraint)
+					uselessness_count[constraint] += 1
+					if(uselessness_count[constraint] > time_until_suppression)
+						delete!(uselessness_count, constraint)
 						delete(model, constraint)
 					end
 				else
-					general_constraints[constraint] = 0
+					uselessness_count[constraint] = 0
+
 				end
 				i_constraint += 1
 			end
 		end
 		time_oracle += @elapsed oracle!(current_distribution, success_probabilities)
 		avg_success_probability = dot(success_probabilities, current_distribution)
-	
+		println("FOUND: $(avg_success_probability)")
 		if(trust_oracle)
 			if(abs(avg_success_probability - current_z) < epsilon)
 				break
@@ -224,7 +243,8 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 		end
 		
 		c = @constraint(model, z >= sum(success_probabilities[x,y] * D[x,y] for x=1:n_X for y=1:n_Y))
-		general_constraints[c] = 0
+		uselessness_count[c] = 0
+		success_probabilities_by_constraint[c] = deepcopy(success_probabilities)
 		
 		if(iter >= min_stabilization && new_best_distribution)
 			for c in stabilizing_constraints
@@ -243,8 +263,8 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 	return best_distribution
 end
 
-function generate_hard_distribution(problem::P, strategy::S, data::I; full_optimization_probability = 0.2, optimization_iter_regular = 5, 
-	optimization_iter_extended = 50, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+function generate_hard_distribution(problem::P, strategy::S, data::I; full_optimization_probability = 1.0, optimization_iter_regular = 2, 
+	optimization_iter_extended = 10, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	test_strategy = deepcopy(strategy)
 	
 	function oracle!(distribution::Matrix{Float64}, success_probabilities::Matrix{Float64})

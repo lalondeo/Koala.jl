@@ -27,13 +27,13 @@ end
 function evaluate_success_probabilities!(game::Problems.Game, strategy::ClassicalStrategy, success_probabilities::Matrix{Float64})
 	for x=1:game.n_X
 		for y=1:game.n_Y
-			success_probabilities[x,y] = (x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R
+			success_probabilities[x,y] = game.R[x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]]
 		end
 	end
 end
 
 function evaluate_success_probability(game::Problems.Game, strategy::ClassicalStrategy, distribution::Matrix{Float64})::Float64
-	return sum(distribution[x,y] * ((x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]) in game.R) for x=1:game.n_X for y=1:game.n_Y)
+	return sum(distribution[x,y] * game.R[x,y,strategy.outputs_Alice[x],strategy.outputs_Bob[y]] for x=1:game.n_X for y=1:game.n_Y)
 end
 
 function scramble_strategy!(strategy::ClassicalStrategy, game::Problems.Game)
@@ -61,9 +61,9 @@ end
 struct ClassicalSolverData <: InternalSolverDataType
 	T_x::Matrix{Float64}
 	T_y::Matrix{Float64}
-	
+	iterator::Base.Iterators.ProductIterator
 	function ClassicalSolverData(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64)
-		new(zeros(n_X, n_A), zeros(n_Y, n_B))
+		new(zeros(n_X, n_A), zeros(n_Y, n_B), Iterators.product(1:n_X, 1:n_Y, 1:n_A, 1:n_B))
 	end
 	
 	
@@ -80,8 +80,8 @@ end
 function improve_strategy!(game::Problems.Game, strategy::ClassicalStrategy, distribution::Matrix{Float64}, data::ClassicalSolverData)
 	data.T_x .= 0
 	
-	for (x,y,a,b) in game.R
-		if(b == strategy.outputs_Bob[y])
+	for (x,y,a,b) in data.iterator
+		if(game.R[x,y,a,b] && b == strategy.outputs_Bob[y])
 			data.T_x[x,a] += distribution[x,y]
 		end
 	end
@@ -92,8 +92,8 @@ function improve_strategy!(game::Problems.Game, strategy::ClassicalStrategy, dis
 	
 	data.T_y .= 0
 	
-	for (x,y,a,b) in game.R
-		if(a == strategy.outputs_Alice[x])
+	for (x,y,a,b) in data.iterator
+		if(game.R[x,y,a,b] && a == strategy.outputs_Alice[x])
 			data.T_y[y,b] += distribution[x,y]
 		end
 	end
@@ -107,11 +107,11 @@ classical_warning = false
 
 
 """
-	optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+	optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64})::Float64
 	
 Given a game and a distribution on the inputs, returns a lower bound on the best achievable winning probability classically. If this function
 is to be called repeatedly, consider builidng the ClassicalStrategy and ClassicalSolverData objects and calling optimize_strategy! directly. """
-function optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+function optimize_classical_strategy(game::Problems.Game, distribution::Matrix{Float64}; kwargs...)::Float64
 	global classical_warning	
 	if(!(classical_warning))
 		@warn "If you are calling this function multiple times during the execution of your program, consider building your own ClassicalStrategy and ClassicalSolverData objects\
@@ -120,6 +120,6 @@ function optimize_classical_strategy(game::Problems.Game, distribution::Matrix{F
 	end
 	strategy = ClassicalStrategy(game)
 	data = ClassicalSolverData(game)
-	optimize_strategy!(game, strategy, distribution, data; max_iter = iterations)
+	optimize_strategy!(game, strategy, distribution, data; kwargs...)
 	return evaluate_success_probability(game, strategy, distribution)
 end

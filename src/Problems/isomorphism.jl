@@ -1,9 +1,9 @@
-export RepresentativeInfo, find_distinguished_representative
+export RepresentativeInfo, select_distinguished_representative!, permute_game
 
 using Combinatorics
 
-function build_iterator(tab::Vector{Int32})
-	dictionary = Tuple{Int32,Int32}[]
+function build_iterator(tab::Vector{Int})
+	dictionary = Tuple{Int,Int}[]
 	for i=1:length(tab)
 		push!(dictionary, (i, tab[i]))
 	end
@@ -22,15 +22,17 @@ function build_iterator(tab::Vector{Int32})
 				push!(indices, dictionary[i+1][1])
 				i += 1
 			end
+			i += 1
 			push!(permutation_iterators, permutations(indices))
 		end
 	end
+
 	
 	return Iterators.product(permutation_iterators...)
 end
 	
 
-function flatten_permutation!(perms, perm::Vector{Int32})
+function flatten_permutation!(perms, perm::Vector{Int})
 	empty!(perm)
 	for x in perms
 		for y in x
@@ -39,50 +41,77 @@ function flatten_permutation!(perms, perm::Vector{Int32})
 	end
 end
 
-function invert_permutation!(original_permutation::Vector{Int32}, target_permutation::Vector{Int32})
+function invert_permutation!(original_permutation::Vector{Int}, target_permutation::Vector{Int})
+	@assert (sort(original_permutation) == collect(1:maximum(original_permutation)))
+
 	for i=1:length(original_permutation)
 		target_permutation[original_permutation[i]] = i
 	end
 end
+
+function permute_game!(game_i::Game, game_f::Game, perm_X::Vector{Int}, perm_Y::Vector{Int}, perm_A::Vector{Int}, perm_B::Vector{Int})
+	game_f.R .= false
+	
+	for x=1:game_i.n_X
+		for y=1:game_i.n_Y
+			for a=1:game_i.n_A
+				for b=1:game_i.n_B
+					if(game_i.R[x,y,a,b])
+						game_f.R[perm_X[x], perm_Y[y], perm_A[a], perm_B[b]] = true
+					end
+				end
+			end
+		end
+	end
+end
+
+
+
 	
 struct RepresentativeInfo
-	vals_X::Vector{Int32}
-	vals_Y::Vector{Int32}
-	vals_A::Vector{Int32}
-	vals_B::Vector{Int32}
-	tmp_i::Vector{Int32}
-	tmp_j::Vector{Int32}
-	joint_tab::Matrix{Int32}
-	tmp_X::Vector{Int32}
-	tmp_Y::Vector{Int32}
-	tmp_A::Vector{Int32}
-	tmp_B::Vector{Int32}
-	perm_X::Vector{Int32}
-	perm_Y::Vector{Int32}
-	perm_A::Vector{Int32}
-	perm_B::Vector{Int32}
-	best_perm_X::Vector{Int32}
-	best_perm_Y::Vector{Int32}
-	best_perm_A::Vector{Int32}
-	best_perm_B::Vector{Int32}
+	iterator::Base.Iterators.ProductIterator
+	vals_X::Vector{Int}
+	vals_Y::Vector{Int}
+	vals_A::Vector{Int}
+	vals_B::Vector{Int}
+	tmp_i::Vector{Int}
+	tmp_j::Vector{Int}
+	joint_tab::Matrix{Int}
+	tmp_X::Vector{Int}
+	tmp_Y::Vector{Int}
+	tmp_A::Vector{Int}
+	tmp_B::Vector{Int}
+	perm_X::Vector{Int}
+	perm_Y::Vector{Int}
+	perm_A::Vector{Int}
+	perm_B::Vector{Int}
+	best_perm_X::Vector{Int}
+	best_perm_Y::Vector{Int}
+	best_perm_A::Vector{Int}
+	best_perm_B::Vector{Int}
+	
 	function RepresentativeInfo(n_X::Int64, n_Y::Int64, n_A::Int64, n_B::Int64)
 		N = max(n_X, n_Y, n_A, n_B);
-		new(zeros(Int32, n_X), zeros(Int32, n_Y), zeros(Int32, n_A), zeros(Int32, n_B), zeros(Int32, N), zeros(Int32, N), zeros(Int32, N, N), 
-		zeros(Int32, n_X), zeros(Int32, n_Y), zeros(Int32, n_A), zeros(Int32, n_B), zeros(Int32, n_X), zeros(Int32, n_Y), zeros(Int32, n_A), zeros(Int32, n_B), 
-		zeros(Int32, n_X), zeros(Int32, n_Y), zeros(Int32, n_A), zeros(Int32, n_B))
+		new(Iterators.product(1:n_X, 1:n_Y, 1:n_A, 1:n_B), zeros(Int, n_X), zeros(Int, n_Y), zeros(Int, n_A), zeros(Int, n_B), zeros(Int, N), zeros(Int, N), zeros(Int, N, N), 
+		zeros(Int, n_X), zeros(Int, n_Y), zeros(Int, n_A), zeros(Int, n_B), zeros(Int, n_X), zeros(Int, n_Y), zeros(Int, n_A), zeros(Int, n_B), 
+		zeros(Int, n_X), zeros(Int, n_Y), zeros(Int, n_A), zeros(Int, n_B))
 	end
+	
 	function RepresentativeInfo(game::Game)
 		return RepresentativeInfo(game.n_X, game.n_Y, game.n_A, game.n_B)
 	end
 	
 end
 
-"""
-	find_distinguished_representative(game::Game, info::RepresentativeInfo)::Game
+	
 
-Given a game and a RepresentativeInfo object, returns another game that is isomorphic to the input. With overwhelming probability, calling this function on two distinct but
+
+"""
+	function select_distinguished_representative!(game::Game, output::Game, info::RepresentativeInfo)
+
+Given a game and a RepresentativeInfo object, finds a game that is isomorphic to game and writes it in output. With overwhelming probability, calling this function on two distinct but
 isomorphic games will return the same game. """
-function find_distinguished_representative(game::Game, info::RepresentativeInfo)::Game
+function select_distinguished_representative!(game::Game, output::Game, info::RepresentativeInfo)
 	info.vals_X .= 0
 	info.vals_Y .= 0
 	info.vals_A .= 0
@@ -99,8 +128,10 @@ function find_distinguished_representative(game::Game, info::RepresentativeInfo)
 	for i=1:4
 		for j=i+1:min(4,i+2)
 			info.joint_tab .= 0
-			for A in game.R
-				info.joint_tab[A[i],A[j]] += 1
+			for r in info.iterator
+				if(game.R[r...])
+					info.joint_tab[r[i],r[j]] += 1
+				end
 			end
 			
 			info.tmp_i .= 1
@@ -134,20 +165,20 @@ function find_distinguished_representative(game::Game, info::RepresentativeInfo)
 	for p_x in iterator_X
 		flatten_permutation!(p_x, info.tmp_X)
 		invert_permutation!(info.tmp_X, info.perm_X)
+		
 		for p_y in iterator_Y
 			flatten_permutation!(p_y, info.tmp_Y)
 			invert_permutation!(info.tmp_Y, info.perm_Y)
+
 			for p_a in iterator_A
 				flatten_permutation!(p_a, info.tmp_A)
 				invert_permutation!(info.tmp_A, info.perm_A)
+	
 				for p_b in iterator_B
 					flatten_permutation!(p_b, info.tmp_B)
 					invert_permutation!(info.tmp_B, info.perm_B)
-					score = 0
-					for (x,y,a,b) in game.R
-						score += hash((info.perm_X[x], info.perm_Y[y], info.perm_A[a], info.perm_B[b]))
-					end
-					score = score % 4294967296
+					permute_game!(game, output, info.perm_X, info.perm_Y, info.perm_A, info.perm_B)
+					score = hash(output.R) >> 1
 					if(score > best_score)
 						best_score = score
 						info.best_perm_X .= info.perm_X
@@ -159,10 +190,6 @@ function find_distinguished_representative(game::Game, info::RepresentativeInfo)
 			end
 		end
 	end
-	R = NTuple{4, Int64}[];
-	for (x,y,a,b) in game.R
-		push!(R, (info.best_perm_X[x], info.best_perm_Y[y], info.best_perm_A[a], info.best_perm_B[b]))
-	end
 	
-	return Game(game.n_X, game.n_Y, game.n_A, game.n_B, Set(R))
+	permute_game!(game, output, info.best_perm_X, info.best_perm_Y, info.best_perm_A, info.best_perm_B)
 end
