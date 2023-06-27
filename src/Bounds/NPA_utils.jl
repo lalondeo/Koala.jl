@@ -41,8 +41,6 @@ end
    build_atomic_monomials(n_i, n_o, level, filtering)
    
    Returns the list of atomic monomials with the required properties. The monomials are listed in increasing size, with the identity coming first.
-
-	
 """
 function build_atomic_monomials(n_i::Int64, n_o::Int64, level::Int64, filtering::Filtering = same_output)::Array{Array{Projector}}
 	atomic_monomials = [Projector[]]
@@ -85,7 +83,7 @@ end
 
 # Equivalence relation for the case where the state is maximally entangled, in which case the final monomials obey a cyclicity property
 # Given a monomial, returns a distinguished representative that is equivalent to it
-function eta(m_::Array{Projector})::Array{Projector}
+function eta(m_::Vector{Projector})::Vector{Projector}
 	if(length(m_) <= 1) return deepcopy(m_) end # Nothing to be done there
 	
 	m = [m_[end]] * m_[1:end-1] # Takes care of the case where the first and last projectors in m have the same vertex

@@ -9,8 +9,6 @@ using SparseArrays
 using LinearAlgebra
 using Suppressor
 
-include("NPA_utils.jl")
-
 ### Monomial arithmetic ###
 struct Monomial
 	alice_part::Array{Projector}
