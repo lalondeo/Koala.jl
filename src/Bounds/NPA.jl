@@ -33,11 +33,11 @@ end
 
 
 """
-	upper_bound_worst_case(problem::Problems.OneWayCommunicationProblem, info::T) where T <: NPA
+	upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T) where T <: NPA
 
 Given a communication problem and a NPA object, calculates an upper bound on the commuting operators value of the game in the worst case.
 """
-function upper_bound_worst_case(problem::Problems.OneWayCommunicationProblem, info::T; offset = 1e-05, target = Inf, kwargs...) where T <: NPA
+function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; offset = 1e-05, target = Inf, kwargs...) where T <: NPA
 	info.model.N += 1
 	info.model.objective = [(info.model.N, info.model.N, -1.0)]
 	compile_pseudo_objective!(info.model; offset = 1e-05)		
