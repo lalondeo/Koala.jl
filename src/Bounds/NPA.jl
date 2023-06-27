@@ -33,14 +33,18 @@ end
 
 
 """
-	upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T) where T <: NPA
+	upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; offset = 1e-05, target = Inf, kwargs...) where T <: NPA
 
-Given a communication problem and a NPA object, calculates an upper bound on the commuting operators value of the game in the worst case.
+Given a communication problem and a NPA object, calculates an upper bound on the commuting operators value of the game in the worst case. Inf will be returned in case something went wrong
+and the solver's solution is infeasible. If target is set to a non-infinity value, we will instead attempt to prove that target is indeed an upper bound on the commuting operators value of the game, 
+return target if this worked and Inf otherwise. offset is a constant offset added to the objective function for numerical purposes. The other keyword arguments will be 
+passed on to COSMO. Parameters that may be of interest are verbose, for having a readout of the solution process, max_iter, for bounding the number of iterations that the solver 
+may perform, and eps_abs, which controls the accuracy with which the upper bound is approximated. 
 """
 function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; offset = 1e-05, target = Inf, kwargs...) where T <: NPA
 	info.model.N += 1
 	info.model.objective = [(info.model.N, info.model.N, -1.0)]
-	compile_pseudo_objective!(info.model; offset = 1e-05)		
+	compile_pseudo_objective!(info.model; offset = offset)		
 
 	n_nonneg_constraints = length(info.model.constraints_nonneg)
 	for x=1:problem.n_X
