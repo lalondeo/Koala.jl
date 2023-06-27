@@ -54,7 +54,7 @@ end
 
 ### Actual hierarchy ###
 
-
+# The original NPA hierarchy of Navascues, Pironio and Acin (2008) 
 struct NPAGeneral <: NPA
 	n_X::Int64
 	n_Y::Int64

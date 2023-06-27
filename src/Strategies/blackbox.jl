@@ -226,7 +226,6 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 		end
 		time_oracle += @elapsed oracle!(current_distribution, success_probabilities)
 		avg_success_probability = dot(success_probabilities, current_distribution)
-		println("FOUND: $(avg_success_probability)")
 		if(trust_oracle)
 			if(abs(avg_success_probability - current_z) < epsilon)
 				break
