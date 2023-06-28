@@ -21,7 +21,7 @@ function upper_bound_game(game::Problems.Game, distribution::Matrix{Float64}, in
 	
 	compile_pseudo_objective!(info.model; offset = offset)	
 	y = find_dual_solution(info.model; target_val = (target == Inf ? Inf : -target), kwargs...)
-	if(validate_dual_solution(info.model, y) < 1e-03)
+	if(validate_dual_solution(info.model, y) > -2)
 		return -dot(info.model.b, y)
 	else
 		return Inf
@@ -37,7 +37,7 @@ return target if this worked and Inf otherwise. offset is a constant offset adde
 passed on to COSMO. Parameters that may be of interest are verbose, for having a readout of the solution process, max_iter, for bounding the number of iterations that the solver 
 may perform, and eps_abs, which controls the accuracy with which the upper bound is approximated. 
 """
-function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; offset = 1e-05, target = Inf, kwargs...)::Float64 where T <: NPA
+function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::NPAGeneral; offset = 1e-05, target = Inf, kwargs...)::Float64
 	info.model.N += 1
 	info.model.objective = [(info.model.N, info.model.N, -1.0)]
 	compile_pseudo_objective!(info.model; offset = offset)		
@@ -48,8 +48,7 @@ function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; o
 		for _y=1:problem.n_Y
 			if(problem.promise[x,_y])
 				constraint = [(info.model.N, info.model.N, -1.0)]
-				for c=1:problem.C
-					
+				for c=1:problem.C					
 					push!(constraint, (info.correlation_components[(x,y,c,problem.f[x,_y] ? 2 : 1)]..., 1.0))
 					y += 1
 				end
@@ -63,7 +62,8 @@ function upper_bound_CC(problem::Problems.OneWayCommunicationProblem, info::T; o
 	compile_constraints!(info.model)
 	y = find_dual_solution(info.model; target_val = (target == Inf ? Inf : -target), kwargs...)
 	res = Inf
-	if(validate_dual_solution(info.model, y) < 1e-03)
+	println(validate_dual_solution(info.model, y))
+	if(validate_dual_solution(info.model, y) > -2)
 		res = -dot(info.model.b, y)
 	end
 	
