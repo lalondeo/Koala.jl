@@ -244,8 +244,21 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 end
 
 function generate_hard_distribution(problem::P, strategy::S, data::I; full_optimization_probability = 0.2, optimization_iter_regular = 5, 
-	optimization_iter_extended = 50, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	optimization_iter_extended = 50, promise::Union{Nothing, Matrix{Bool}} = nothing, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	test_strategy = deepcopy(strategy)
+	
+
+	function additional_constraints(model, D)
+		if(promise != nothing)
+			for x=1:problem.n_X
+				for y=1:problem.n_Y
+					if(!(promise[x,y]))
+						@constraint(model, D[x,y] == 0)
+					end
+				end
+			end
+		end
+	end
 	
 	function oracle!(distribution::Matrix{Float64}, success_probabilities::Matrix{Float64})
 		if(rand() < full_optimization_probability)
@@ -258,7 +271,7 @@ function generate_hard_distribution(problem::P, strategy::S, data::I; full_optim
 		evaluate_success_probabilities!(problem, strategy, success_probabilities)
 	end
 	
-	return generate_hard_distribution(problem.n_X, problem.n_Y, oracle!; solver_args...)
+	return generate_hard_distribution(problem.n_X, problem.n_Y, oracle!; additional_constraints = additional_constraints, solver_args...)
 end
 
 

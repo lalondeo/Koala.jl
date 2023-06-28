@@ -83,6 +83,7 @@ end
 
 # Equivalence relation for the case where the state is maximally entangled, in which case the final monomials obey a cyclicity property
 # Given a monomial, returns a distinguished representative that is equivalent to it
+# The name comes from the paper of Russell referenced in NPA_synchronous
 function eta(m_::Vector{Projector})::Vector{Projector}
 	if(length(m_) <= 1) return deepcopy(m_) end # Nothing to be done there
 	
