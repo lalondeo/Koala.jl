@@ -2,10 +2,10 @@ export upper_bound_dist, adapt_to_worst_case, upper_bound_CC
 
 
 """
-	function upper_bound_dist(game::Problems.Game, distribution::Matrix{Float64}, info::T) where T <: NPA
+	function upper_bound_game(game::Problems.Game, distribution::Matrix{Float64}, info::T) where T <: NPA
 
 Given a game, a distribution on the inputs and a NPA object, calculates an upper bound on the commuting operators value of the game. """
-function upper_bound_dist(game::Problems.Game, distribution::Matrix{Float64}, info::T; offset = 1e-05, target = Inf, kwargs...)::Float64 where T <: NPA
+function upper_bound_game(game::Problems.Game, distribution::Matrix{Float64}, info::T; offset = 1e-05, target = Inf, kwargs...)::Float64 where T <: NPA
 	empty!(info.model.objective)
 	for x=1:game.n_X	
 		for y=1:game.n_Y
