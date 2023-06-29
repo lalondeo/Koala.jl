@@ -118,7 +118,7 @@ const TiltedCHSH = Game(R)
 """
 	build_tilted_CHSH_distribution(p::Float64)::Matrix{Float64}
 	
-For a parameter p between 0 and 1, returns the corresponding distribution for the tilted CHSH game (TiltedCHSH). p = 0 corresponds to the usual CHSH game; p = 1 corresponds
+For a parameter p between 0 and 1, returns the corresponding distribution for the tilted CHSH game (TiltedCHSH), introduced by Acin, Massar and Pironio (2012). p = 0 corresponds to the usual CHSH game; p = 1 corresponds
 to a game that's winnable with probability 1 classically; and all choices in-between yield games for which the optimal value cannot be attained with a maximally entangled state, although
 the gap is generally quite small. Choosing p = 0.8 will yield a game with value approximately 80.5% but with maximally entangled value approximately 80%. """
 function build_tilted_CHSH_distribution(p::Float64)::Matrix{Float64}
@@ -133,6 +133,18 @@ function build_tilted_CHSH_distribution(p::Float64)::Matrix{Float64}
 		end
 	end
 	return dist
+end
+
+"""
+	CHSH_n_CMMN(n::Int64)::Game
+
+Returns the nth game from the family of games introduced in 'A generalization of CHSH and the algebraic structure of optimal strategies' by Cui, Mehta, Mousavi and Nezhadi (2020), which
+generalize the usual CHSH game. The original CHSH game is the special case where n = 2. The nth game has binary input sets and output sets of size n, which should be greater or equal to two.
+As in the case of the tilted CHSH games, for n > 3, the maximally entangled value of the game is always lesser than the entangled value. n = 3 has an entangled value of roughly 79% and maximally entangled value of roughly 77%. 
+"""
+function CHSH_n_CMMN(n::Int64)::Game
+	V = (x,y,a,b) -> ((x==2) && (y == 2) && (((a - b) % n) == 1)) || (((x!=2) || (y != 2)) && (((a - b) % n) == 0))
+	return Game(2,2,n,n,V)
 end
 			
 
