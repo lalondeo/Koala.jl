@@ -1,10 +1,8 @@
-module Problems
 
 export ProblemType, uniform_distribution
 abstract type ProblemType end
 
-
-include("../utils.jl")
+include("game.jl")
 include("communication_problem.jl") 
 include("isomorphism.jl")
 
@@ -25,7 +23,5 @@ function uniform_distribution(n_X::Int, n_Y::Int; promise = (x,y) -> true)::Matr
 	return distribution
 end
 
-
-end # Module
 
 

@@ -1,12 +1,8 @@
-module Bounds
 
-include("../utils.jl")
-import ..Problems
-import ..SDP_solver
-
-include("sparse_SDP.jl")
-include("NPA_utils.jl")
+include("monomials.jl")
 include("NPA_general.jl")
+include("NPA_classical.jl")
 include("NPA_synchronous.jl")
-include("NPA.jl")
-end
+include("run_hierarchy.jl")
+include("xi_SDP.jl")
+include("ADMM.jl")

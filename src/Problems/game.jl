@@ -128,8 +128,8 @@ function build_tilted_CHSH_distribution(p::Float64)::Matrix{Float64}
 		for _y=1:2
 			for c=1:2
 				dist[x,y] = 1/4 * (c==1 ? p : (1-p))
+				y += 1
 			end
-			y += 1
 		end
 	end
 	return dist
@@ -146,43 +146,55 @@ function CHSH_n_CMMN(n::Int64)::Game
 	V = (x,y,a,b) -> ((x==2) && (y == 2) && (((a - b) % n) == 1)) || (((x!=2) || (y != 2)) && (((a - b) % n) == 0))
 	return Game(2,2,n,n,V)
 end
-			
+	
+function tilted_CHSH_n_CMMN(n::Int64)::Game
+	V = (x,y,a,b) -> (y >= 3) ? (a == 1) : (((x==2) && (y == 2) && (((a - b) % n) == 1)) || (((x!=2) || (y != 2)) && (((a - b) % n) == 0)))
+	return Game(2,4,n,n,V)
+end	
 
 
 			
 """
-	coloring_game(G::Matrix{Bool}, C::Int64)::Game
+	coloring_game(G::Matrix{Bool}, k::Int64)::Game
 
-Given a graph G and the number of colors C, builds the corresponding coloring game ('On the chromatic number of a graph' by Cameron et al., 2017) """
-function coloring_game(G::Matrix{Bool}, C::Int64)::Game
+Given a graph G and the number of colors k, builds the corresponding coloring game ('On the chromatic number of a graph' by Cameron et al., 2007) and the distribution which is uniform on legal inputs. """
+function coloring_game(G::Matrix{Bool}, k::Int64)::Tuple{Game, Matrix{Float64}}
 	n = size(G,2)
-	R = zeros(Bool, n, n, C, C)
+	R = zeros(Bool, n, n, k, k)
+	distribution = ones(n,n)
 	for x=1:n
 		for y=1:n
 			if(x==y)
-				for c=1:C
+				for c=1:k
 					R[x,y,c,c] = true
 				end
-			else
-				for c1=1:C
-					for c2=1:C
-						if(!(G[x,y]) || (c1 != c2))
+				
+			elseif(G[x,y])
+				for c1=1:k
+					for c2=1:k
+						if((c1 != c2))
 							R[x,y,c1,c2] = true
 						end
 					end
 				end
+				
+			else
+				distribution[x,y] = 0.0
 			end
 		end
 	end
-	return Game(R)
+	
+	distribution ./= sum(distribution)
+	
+	return Game(R), distribution
 end
 
 
 
 Vs = [[1;0;0],[0;1;0],[0;0;1],[1;1;0],[1;-1;0],[1;0;1],[1;0;-1],[0;1;1],[0;1;-1],[1;1;1],[1;1;-1],[1;-1;1],[-1;1;1]]
 
-# G_{13} from "Oddities of quantum colorings" by Mancinsa and Roberson
-const G_13 = zeros(Bool, 13, 13);
+# G_{13} from "Oddities of quantum colorings" by Mancinska and Roberson
+G_13 = zeros(Bool, 13, 13);
 for i=1:13
 	for j=1:13
 		if(dot(Vs[i], Vs[j]) == 0)

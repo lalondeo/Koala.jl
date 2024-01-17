@@ -5,13 +5,13 @@ export YaoProtocol, YaoSolverData, generate_hard_distribution_yao, optimize_yao
 
 struct YaoProtocol <: StrategyType
 	states::Vector{Matrix{Float64}}
-	POVMs::Vector{Pair{Matrix{Float64}, Matrix{Float64}}} # Corresponding to the probability of outputting zero and one
-	function YaoProtocol(n_X::Int64, n_Y::Int64, C::Int64)
-		new([realify(gen_rho(C)) for x=1:n_X], [Pair(realify.(gen_rand_POVM(2,C))...) for y=1:n_Y])
+	POVMs::Vector{Vector{Matrix{Float64}}} # Corresponding to the probability of outputting zero and one
+	function YaoProtocol(n_X::Int64, n_Y::Int64, n_Z::Int64, C::Int64)
+		new([realify(gen_rho(C)) for x=1:n_X], [realify.(gen_rand_POVM(n_Z,C)) for y=1:n_Y])
 	end
 	
 	function YaoProtocol(problem::Problems.OneWayCommunicationProblem) # Generates a protocol at random
-		YaoProtocol(problem.n_X, problem.n_Y, problem.C)
+		YaoProtocol(problem.n_X, problem.n_Y, problem.n_Z, problem.C)
 	end
 end
 
@@ -20,7 +20,7 @@ function copyto!(prot1::YaoProtocol, prot2::YaoProtocol)
 		prot1.states[x] .= prot2.states[x]
 	end
 	for y=1:length(prot1.POVMs)
-		for i=1:2
+		for i=1:length(prot1.POVMs[1])
 			prot1.POVMs[y][i] .= prot2.POVMs[y][i]
 		end
 	end
@@ -30,7 +30,7 @@ function evaluate_success_probabilities!(problem::Problems.OneWayCommunicationPr
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
 			if(problem.promise[x,y])
-				success_probabilities[x,y] = tr(protocol.states[x] * protocol.POVMs[y][problem.f[x,y]+1]) / 2.0
+				success_probabilities[x,y] = tr(protocol.states[x] * protocol.POVMs[y][problem.f[x,y]]) / 2.0
 			else
 				success_probabilities[x,y] = 0.0
 			end
@@ -43,7 +43,7 @@ function evaluate_success_probability(problem::Problems.OneWayCommunicationProbl
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
 			if(problem.promise[x,y])
-				tot += distribution[x,y] * tr(protocol.states[x] * protocol.POVMs[y][problem.f[x,y]+1]) / 2.0
+				tot += distribution[x,y] * tr(protocol.states[x] * protocol.POVMs[y][problem.f[x,y]]) / 2.0
 			end
 		end
 	end
@@ -60,9 +60,9 @@ function scramble_strategy!(protocol::YaoProtocol, problem::Problems.OneWayCommu
 		
 	for y=1:problem.n_Y
 		if(rand() < 0.5)
-			new_POVM = gen_rand_POVM(2, problem.C)
-			for i=1:2
-				protocol.POVMs[y][i] .= 0.5 * protocol.POVMs[y][i] + realify(new_POVM[i])
+			new_POVM = gen_rand_POVM(problem.n_Z, problem.C)
+			for i=1:length(problem.n_Z)
+				protocol.POVMs[y][i] .= 0.5 * protocol.POVMs[y][i] + 0.5 * realify(new_POVM[i])
 			end
 		end
 	end
@@ -74,9 +74,9 @@ struct YaoSolverData <: InternalSolverDataType
 	SDP_states::Model
 	states::Vector{Symmetric{VariableRef, Matrix{VariableRef}}}
 	SDP_POVMs
-	POVMs::Vector{Pair{Symmetric{VariableRef, Matrix{VariableRef}}}}
+	POVMs::Vector{Vector{Symmetric{VariableRef, Matrix{VariableRef}}}}
 	
-	function YaoSolverData(n_X::Int64, n_Y::Int64, dim::Int64; eps_abs = 1e-05)
+	function YaoSolverData(n_X::Int64, n_Y::Int64, n_Z::Int64, dim::Int64; eps_abs = 1e-05)
 					
 		SDP_states = JuMP.Model(SDP_solver(eps_abs));	
 		set_silent(SDP_states)
@@ -90,18 +90,19 @@ struct YaoSolverData <: InternalSolverDataType
 		SDP_POVMs = JuMP.Model(SDP_solver(eps_abs));	
 		set_silent(SDP_POVMs)
 		
-		POVMs = [Pair(@variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD), @variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD)) for y=1:n_Y]
+		POVMs = [[@variable(SDP_POVMs, [1:2*dim, 1:2*dim], PSD) for i=1:n_Z] for y=1:n_Y]
 		Id = diagm([1.0 for i=1:2*dim])
 		for y=1:n_Y
-			@constraint(SDP_POVMs, POVMs[y][1] + POVMs[y][2] .== Id)
-			enforce_SDP_constraints(SDP_POVMs, POVMs[y][1])
-			enforce_SDP_constraints(SDP_POVMs, POVMs[y][2])
+			@constraint(SDP_POVMs, sum(POVMs[y]) .== Id)
+			for M in POVMs[y]
+				enforce_SDP_constraints(SDP_POVMs, M)
+			end
 		end
 		new(SDP_states, states, SDP_POVMs, POVMs)
 	end
 	
 	function YaoSolverData(problem::Problems.OneWayCommunicationProblem; kwargs...)
-		YaoSolverData(problem.n_X, problem.n_Y, problem.C; kwargs...)
+		YaoSolverData(problem.n_X, problem.n_Y, problem.n_Z, problem.C; kwargs...)
 	end
 	
 end
@@ -109,16 +110,16 @@ end
 ######################### Optimization functions #########################
 
 function improve_strategy!(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64}, data::YaoSolverData)
-	@objective(data.SDP_states, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(protocol.POVMs[y][problem.f[x,y]+1] * data.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
+	@objective(data.SDP_states, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(protocol.POVMs[y][problem.f[x,y]] * data.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
 	optimize!(data.SDP_states)
 	for x=1:problem.n_X
 		protocol.states[x] .= JuMP.value.(data.states[x])
 	end
 	
-	@objective(data.SDP_POVMs, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(data.POVMs[y][problem.f[x,y]+1] * protocol.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
+	@objective(data.SDP_POVMs, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(data.POVMs[y][problem.f[x,y]] * protocol.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
 	optimize!(data.SDP_POVMs)
 	for y=1:problem.n_Y
-		for i=1:2
+		for i=1:problem.n_Z
 			protocol.POVMs[y][i] .= JuMP.value.(data.POVMs[y][i])
 		end
 	end	

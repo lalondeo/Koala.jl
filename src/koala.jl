@@ -1,29 +1,13 @@
 module Koala
+using LinearAlgebra, IterativeSolvers, LinearMaps, SparseArrays, COSMO, JuMP
 
-using COSMO
-using JuMP
-using Pkg
-SDP_solver = (eps_abs) -> optimizer_with_attributes(COSMO.Optimizer, "eps_abs" => eps_abs)
+#LP_solver = () -> (cplex_available ? CPLEX.Optimizer : HiGHS.Optimizer)
 
-
-cplex_available = true
-
-try 
-	global cplex_available
-	using CPLEX
-	cplex_available = true
-catch
-	using HiGHS
-	global cplex_available
-	cplex_available = false
-end
-
-LP_solver = () -> (cplex_available ? CPLEX.Optimizer : HiGHS.Optimizer)
-	
+include("graphutils.jl")
+include("SDP.jl")
 
 include("Problems/problems.jl")
-include("Strategies/strategies.jl")
+#include("Strategies/strategies.jl")
 include("Bounds/bounds.jl")
 
-end
-	
+end # module Koala

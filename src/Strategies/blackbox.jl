@@ -80,10 +80,12 @@ function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribut
 	copy_strategy = false # Controls whether the strategy in test_strategy is the best strategy known so far and should be copied to strategy in the event that the iteration limit were to be hit
 	for i=1:max_iter
 		copy_strategy = false
+		println(evaluate_success_probability(problem, test_strategy, distribution))
 		improve_strategy!(problem, test_strategy, distribution, solver_data)
 		value = evaluate_success_probability(problem, test_strategy, distribution)
+			println(value)
 		if(abs(value - old_value) < epsilon || value > 1 - epsilon)
-			
+	
 			if(value > best_value)
 				best_value = value
 				copyto!(strategy, test_strategy)
@@ -290,9 +292,7 @@ function add_group_constraints_y!(model::Model, D::Matrix{VariableRef}, period::
 	end
 end
 	
-	
-	
-	
+
 					
 
 
