@@ -101,9 +101,7 @@ struct NPAClassical <: NPA
 				end
 			end
 		end
-		
 		N = length(atomic_monomials)
-		display(atomic_monomials)
 		model = SDP_Model(N)
 		push!(model.constraints_eq, Constraint([(1, 1, 1.0)], 1.0)) # Normalization constraint
 		
@@ -126,7 +124,7 @@ struct NPAClassical <: NPA
 					
 				else
 					monomial_registry[m] = (i,j)
-					if(length(m.alice_part) == 1 && length(m.bob_part) == 1)
+					if(count((i)->i != 0, m.alice_part) == 1 && count((i)->i != 0, m.bob_part) == 1)
 						push!(model.constraints_nonneg, Constraint([(i,j,1.0)], 0.0)) # This is a probability and therefore must be nonnegative
 					end
 				end

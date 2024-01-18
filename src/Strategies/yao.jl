@@ -10,7 +10,7 @@ struct YaoProtocol <: StrategyType
 		new([realify(gen_rho(C)) for x=1:n_X], [realify.(gen_rand_POVM(n_Z,C)) for y=1:n_Y])
 	end
 	
-	function YaoProtocol(problem::Problems.OneWayCommunicationProblem) # Generates a protocol at random
+	function YaoProtocol(problem::OneWayCommunicationProblem) # Generates a protocol at random
 		YaoProtocol(problem.n_X, problem.n_Y, problem.n_Z, problem.C)
 	end
 end
@@ -26,7 +26,7 @@ function copyto!(prot1::YaoProtocol, prot2::YaoProtocol)
 	end
 end
 
-function evaluate_success_probabilities!(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, success_probabilities::Matrix{Float64})
+function evaluate_success_probabilities!(problem::OneWayCommunicationProblem, protocol::YaoProtocol, success_probabilities::Matrix{Float64})
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
 			if(problem.promise[x,y])
@@ -38,7 +38,7 @@ function evaluate_success_probabilities!(problem::Problems.OneWayCommunicationPr
 	end
 end
 
-function evaluate_success_probability(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64})::Float64
+function evaluate_success_probability(problem::OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64})::Float64
 	tot = 0.0
 	for x=1:problem.n_X
 		for y=1:problem.n_Y
@@ -50,7 +50,7 @@ function evaluate_success_probability(problem::Problems.OneWayCommunicationProbl
 	return tot
 end
 
-function scramble_strategy!(protocol::YaoProtocol, problem::Problems.OneWayCommunicationProblem)
+function scramble_strategy!(protocol::YaoProtocol, problem::OneWayCommunicationProblem)
 	for x=1:problem.n_X
 		if(rand() < 0.5)
 			new_state = realify(gen_rho(problem.C))
@@ -101,7 +101,7 @@ struct YaoSolverData <: InternalSolverDataType
 		new(SDP_states, states, SDP_POVMs, POVMs)
 	end
 	
-	function YaoSolverData(problem::Problems.OneWayCommunicationProblem; kwargs...)
+	function YaoSolverData(problem::OneWayCommunicationProblem; kwargs...)
 		YaoSolverData(problem.n_X, problem.n_Y, problem.n_Z, problem.C; kwargs...)
 	end
 	
@@ -109,7 +109,7 @@ end
 
 ######################### Optimization functions #########################
 
-function improve_strategy!(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64}, data::YaoSolverData)
+function improve_strategy!(problem::OneWayCommunicationProblem, protocol::YaoProtocol, distribution::Matrix{Float64}, data::YaoSolverData)
 	@objective(data.SDP_states, Max, sum(problem.promise[x,y] ? (distribution[x,y] * tr(protocol.POVMs[y][problem.f[x,y]] * data.states[x])) : 0 for x=1:problem.n_X for y=1:problem.n_Y))
 	optimize!(data.SDP_states)
 	for x=1:problem.n_X
@@ -127,11 +127,11 @@ end
 
 yao_warning = false
 """
-	optimize_yao(game::Problems.Game, distribution::Matrix{Float64}; iterations = 50)::Float64
+	optimize_yao(game::Game, distribution::Matrix{Float64}; iterations = 50)::Float64
 	
 Given a game and a distribution on the inputs, returns a lower bound on the best achievable winning probability classically. If this function
 is to be called repeatedly, consider builidng the ClassicalStrategy and ClassicalSolverData objects and calling optimize_strategy! directly. """
-function optimize_yao(problem::Problems.OneWayCommunicationProblem, distribution::Matrix{Float64}; kwargs...)::Float64
+function optimize_yao(problem::OneWayCommunicationProblem, distribution::Matrix{Float64}; kwargs...)::Float64
 	global yao_warning	
 	if(!(yao_warning))
 		@warn "If you are calling this function multiple times during the execution of your program, consider building your own YaoProtocol and YaoSolverData objects\
@@ -147,11 +147,11 @@ end
 ######################### Distributional things #########################
 
 
-function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData; kwargs...)
+function generate_hard_distribution_yao(problem::OneWayCommunicationProblem, protocol::YaoProtocol, data::YaoSolverData; kwargs...)
 	return generate_hard_distribution(problem, protocol, data; promise = problem.promise, kwargs...)
 end
 
-function generate_hard_distribution_yao(problem::Problems.OneWayCommunicationProblem; kwargs...)
+function generate_hard_distribution_yao(problem::OneWayCommunicationProblem; kwargs...)
 	protocol = YaoProtocol(problem)
 	data = YaoSolverData(problem)
 	return generate_hard_distribution_yao(problem, protocol, data; kwargs...)

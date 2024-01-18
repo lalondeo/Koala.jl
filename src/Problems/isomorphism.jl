@@ -1,4 +1,4 @@
-export RepresentativeInfo, select_distinguished_representative!, permute_game
+export RepresentativeInfo, select_distinguished_representative!, permute_game!
 
 using Combinatorics
 

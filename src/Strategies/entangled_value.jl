@@ -42,7 +42,7 @@ struct EntangledStrategy <: StrategyType
 	Given a game as well as the local dimension dim, returns a random strategy, i.e.
 	n_X POVMs of n_A elements each for Alice and n_Y POVMs of n_B elements each for Bob, all over C^n. The POVMs are represented in 
 	real form because solvers typically do not handle complex numbers. The actual contents of the game is irrelevant, all that matters are the input/output dimensions."""
-	function EntangledStrategy(game::Problems.Game, dim::Int; kwargs...) # Generates a protocol at random
+	function EntangledStrategy(game::Game, dim::Int; kwargs...) # Generates a protocol at random
 		EntangledStrategy(game.n_X, game.n_Y, game.n_A, game.n_B, dim; kwargs...)
 	end
 	
@@ -62,7 +62,7 @@ function copyto!(strat1::EntangledStrategy, strat2::EntangledStrategy)
 end
 
 
-function evaluate_success_probabilities!(game::Problems.Game, strategy::EntangledStrategy, success_probabilities::Matrix{Float64})
+function evaluate_success_probabilities!(game::Game, strategy::EntangledStrategy, success_probabilities::Matrix{Float64})
 	success_probabilities .= 0.0
 	for x=1:game.n_X
 		for y=1:game.n_Y
@@ -77,18 +77,18 @@ function evaluate_success_probabilities!(game::Problems.Game, strategy::Entangle
 	end
 end
 
-function evaluate_success_probability(game::Problems.Game, strategy::EntangledStrategy, distribution::Matrix{Float64})::Float64
+function evaluate_success_probability(game::Game, strategy::EntangledStrategy, distribution::Matrix{Float64})::Float64
 	return sum(game.R[x,y,a,b] ? (distribution[x,y] * tr(strategy.A[(x,a)] * strategy.B[(y,b)]) / strategy.dim / (strategy.keep_real ? 1 : 2)) : 0 for x=1:game.n_X for y=1:game.n_Y for a=1:game.n_A for b=1:game.n_B)
 end
 
 # """
-	# extract_actual_strategy(strategy::EntangledStrategy, game::Problems.Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
+	# extract_actual_strategy(strategy::EntangledStrategy, game::Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
 
 # EntangledStrategy represents entangled strategies in a solver-friendly way, and not in the usual tensor product representation. This function 
 # extracts a strategy in the usual form, over a composite system AB where dim A = dim B, two sets of complex POVMs over A and B respectively and an entangled state on AB.
 
 # This function is not supposed to be useful for any other purpose than validation. """
-# function extract_actual_strategy(strategy::EntangledStrategy, game::Problems.Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
+# function extract_actual_strategy(strategy::EntangledStrategy, game::Game)::Tuple{Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Dict{Tuple{Int,Int}, Matrix{ComplexF64}}, Vector{ComplexF64}}
 
 	# A = Dict()
 	# for pair in strategy.A
@@ -122,7 +122,7 @@ end
 	
 
 
-function scramble_strategy!(strategy::EntangledStrategy, game::Problems.Game)
+function scramble_strategy!(strategy::EntangledStrategy, game::Game)
 	dim = (strategy.keep_real ? size(strategy.A[(1,1)],1) : div(size(strategy.A[(1,1)], 1), 2))
 	for x=1:game.n_X
 		if(rand() < 0.5)
@@ -208,7 +208,7 @@ mutable struct EntangledSolverData <: InternalSolverDataType
 		return new(SDP_A, A, SDP_B, B, true)
 	end
 	
-	function EntangledSolverData(game::Problems.Game, dim::Int; kwargs...)
+	function EntangledSolverData(game::Game, dim::Int; kwargs...)
 		EntangledSolverData(game.n_X, game.n_Y, game.n_A, game.n_B, dim; kwargs...)
 	end
 	
@@ -247,7 +247,7 @@ function set_optimal_start_values(model::Model)
     return
 end
 
-function improve_strategy!(game::Problems.Game, strategy::EntangledStrategy, distribution::Matrix{Float64}, data::EntangledSolverData)
+function improve_strategy!(game::Game, strategy::EntangledStrategy, distribution::Matrix{Float64}, data::EntangledSolverData)
 	#if(!(data.first_time))
 	#	set_optimal_start_values(data.SDP_A)
 #	end
@@ -275,11 +275,11 @@ end
 entangled_warning = false
 
 """
-	optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; kwargs...)::Float64
+	optimize_entangled_strategy(game::Game, distribution::Matrix{Float64}, dim::Int64; kwargs...)::Float64
 	
 Given a game, a distribution on the inputs and the local dimension of the joint entangled state, returns a lower bound on the best achievable winning probability in the tensor product model by calling optimize_strategy!. If this function
 is to be called repeatedly, consider builidng the EntangledStrategy and EntangledSolverData objects and calling optimize_strategy! directly. """
-function optimize_entangled_strategy(game::Problems.Game, distribution::Matrix{Float64}, dim::Int64; impose_maximally_entangled = false, kwargs...)#::Float64
+function optimize_entangled_strategy(game::Game, distribution::Matrix{Float64}, dim::Int64; impose_maximally_entangled = false, kwargs...)#::Float64
 	global entangled_warning	
 	if(!(entangled_warning))
 		@warn "If you are calling this function multiple times during the execution of your program, consider building your own EntangledStrategy and EntangledSolverData objects\

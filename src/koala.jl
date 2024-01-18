@@ -1,13 +1,13 @@
 module Koala
-using LinearAlgebra, IterativeSolvers, LinearMaps, SparseArrays, COSMO, JuMP
+using LinearAlgebra, IterativeSolvers, LinearMaps, SparseArrays, COSMO, JuMP, Cbc
 
-#LP_solver = () -> (cplex_available ? CPLEX.Optimizer : HiGHS.Optimizer)
+LP_solver = Cbc.Optimizer
 
 include("graphutils.jl")
 include("SDP.jl")
 
 include("Problems/problems.jl")
-#include("Strategies/strategies.jl")
+include("Strategies/strategies.jl")
 include("Bounds/bounds.jl")
 
 end # module Koala

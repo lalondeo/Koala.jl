@@ -50,7 +50,7 @@ function write_graph6(G::Matrix{Bool})::String
 				m |= 2^l
 			end
 			
-			if(l == 0)
+			if(l == 0 || (i == n && j == n - 1))
 				l = 5
 				str *= Char(m + 63)
 				m = 0
@@ -114,6 +114,7 @@ function find_good_maximal_clique(G::Matrix{Bool}; N::Int64 = 20)::Vector{Int}
 			clique = new_clique
 		end
 	end
+	sort!(clique)
 	return clique
 end
 
@@ -280,7 +281,7 @@ function has_k_coloring(G::Matrix{Bool}, k::Int; clique::Vector{Int} = Int[])::B
 	while(current_branch > 0 && 0 in colors)
 		vertex = branches[current_branch]
 		if(vertex == 0)
-			vertex = argmax((1000 * (G * is_colored) .+ degrees) .* (1 .- is_colored))
+			vertex = argmax((1000 * (G * is_colored) .+ degrees) .* (1 .- is_colored) .- is_colored)
 			branches[current_branch] = vertex
 			is_colored[vertex] = true
 			colors[vertex] = 0

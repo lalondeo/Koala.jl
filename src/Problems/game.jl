@@ -1,4 +1,4 @@
-export Game, encode_game, decode_game, MagicSquareGame, CHSH, TiltedCHSH, build_tilted_CHSH_distribution, coloring_game, G_13, G_14
+export Game, encode_game, decode_game, random_game, MagicSquareGame, CHSH, TiltedCHSH, build_tilted_CHSH_distribution, coloring_game, G_13, G_14
 import Base.copyto!
 
 struct Game <: ProblemType
@@ -34,6 +34,15 @@ function copyto!(game_i::Game, game_f::Game)
 	@assert game_i.n_B == game_f.n_B
 	
 	game_f.R .= game_i.R
+end
+
+"""
+	random_game(n_X::Int, n_Y::Int, n_A::Int, n_B::Int; p::Float64 = 0.5)
+
+Given the dimensions of the game and a probability p, returns a randomly chosen game with these dimensions where every answer is taken to win the game independently with probability p.
+"""
+function random_game(n_X::Int, n_Y::Int, n_A::Int, n_B::Int; p::Float64 = 0.5)::Game
+	return Game(n_X, n_Y, n_A, n_B, (x,y,a,b) -> rand() < p)
 end
 
 

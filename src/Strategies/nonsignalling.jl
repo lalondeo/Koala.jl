@@ -38,14 +38,14 @@ struct NonSignallingSolverData <: InternalSolverDataType
 		new(model, correlations, probabilities_alice, probabilities_bob)
 	end
 	
-	function NonSignallingSolverData(game::Problems.Game)
+	function NonSignallingSolverData(game::Game)
 		new(game.n_X, game.n_Y, game.n_A, game.n_B)
 	end
 		
 	
 end
 
-function optimize_non_signalling!(game::Problems.Game, distribution::Matrix{Float64}, success_probabilities::Matrix{Float64}, data::NonSignallingSolverData)::Float64
+function optimize_non_signalling!(game::Game, distribution::Matrix{Float64}, success_probabilities::Matrix{Float64}, data::NonSignallingSolverData)::Float64
 	@objective(data.model, Max, sum(R[x,y,a,b] ? (distribution[x,y] * data.model.correlations[(x,y)][(a,b)]) : 0 for x=1:game.n_X for y=1:game.n_Y for a=1:game.n_A for b=1:game.n_B))
 	optimize!(data.model)
 	success_probabilities .= 0.0
@@ -54,7 +54,7 @@ function optimize_non_signalling!(game::Problems.Game, distribution::Matrix{Floa
 	end
 end
 
-function optimize_non_signalling(game::Problems.Game, distribution::Matrix{Float64})::Float64
+function optimize_non_signalling(game::Game, distribution::Matrix{Float64})::Float64
 	data = NonSignallingSolverData(game)
 	success_probabilities = zeros(game.n_X, game.n_Y)
 	return optimize_non_signalling!(game, distribution, success_probabilities, data)

@@ -16,18 +16,18 @@ export evaluate_success_probabilities!, evaluate_success_probabilities, evaluate
 
 
 """
-	evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: Problems.ProblemType where S <: StrategyType
+	evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: ProblemType where S <: StrategyType
 	
 Given a problem, a strategy for said problem and a matrix of success probabilities, fills the matrix so that the entry (x,y) equals the success probability on inputs x and y. """
-function evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: Problems.ProblemType where S <: StrategyType
+function evaluate_success_probabilities!(problem::P, strategy::S, success_probabilities::Matrix{Float64}) where P <: ProblemType where S <: StrategyType
 	error("evaluate_success_probabilities! not implemented")
 end
 
 """
-	evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: Problems.ProblemType where S <: StrategyType
+	evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: ProblemType where S <: StrategyType
 
 Given a problem and a strategy for said problem, returns a n_X x n_Y matrix containing the success probabilities for every input pair. """
-function evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: Problems.ProblemType where S <: StrategyType
+function evaluate_success_probabilities(problem::P, strategy::S)::Matrix{Float64} where P <: ProblemType where S <: StrategyType
 	success_probabilities = zeros(problem.n_X, problem.n_Y)
 	evaluate_success_probabilities!(problem, strategy, success_probabilities)
 	return success_probabilities
@@ -43,35 +43,35 @@ function copyto!(strat1::S, strat2::S) where S <: StrategyType
 end
 
 """
-	evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: Problems.ProblemType where S <: StrategyType
+	evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: ProblemType where S <: StrategyType
 
 Given a problem, a strategy for said problem and a distribution on the inputs, returns the average success probability under the distribution.
 """
-function evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: Problems.ProblemType where S <: StrategyType
+function evaluate_success_probability(problem::P, strategy::S, distribution::Matrix{Float64})::Float64 where P <: ProblemType where S <: StrategyType
 	@warn "evaluate_success_probability not overriden: forced to compute it using evaluate_success_probabilities, which corresponds to an unnecessary allocation. "
 	return dot(distribution, evaluate_success_probabilities(problem, strategy))
 end
 
 """
-	scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: Problems.ProblemType
+	scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: ProblemType
 
 Given a strategy for a given problem, fiddles with the strategy. This is used in the context of a local search to reboot the search.  """
-function scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: Problems.ProblemType
+function scramble_strategy!(strategy::S, problem::P) where S <: StrategyType where P <: ProblemType
 	error("scramble_strategy! not implemented")
 end
 
 
 """
-	improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
 
 Give a problem, a strategy for said problem, a distribution on the inputs and a solver data object, attemps to replace the strategy with a better one. """
-function improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+function improve_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, data::I) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	error("improve_strategy! not implemented")
 end
 
 
 function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
 				
 	old_value = 0
 	best_value = 0
@@ -80,10 +80,8 @@ function optimize_strategy!(problem::P, strategy::S, test_strategy::S, distribut
 	copy_strategy = false # Controls whether the strategy in test_strategy is the best strategy known so far and should be copied to strategy in the event that the iteration limit were to be hit
 	for i=1:max_iter
 		copy_strategy = false
-		println(evaluate_success_probability(problem, test_strategy, distribution))
 		improve_strategy!(problem, test_strategy, distribution, solver_data)
 		value = evaluate_success_probability(problem, test_strategy, distribution)
-			println(value)
 		if(abs(value - old_value) < epsilon || value > 1 - epsilon)
 	
 			if(value > best_value)
@@ -121,12 +119,12 @@ optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solve
 	depending on the value of stop_at_local_maximum. At the end of the process, the contents of strategy is the best-scoring strategy found so far.
 """
 function optimize_strategy!(problem::P, strategy::S, distribution::Matrix{Float64}, solver_data::I; 
-				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+				max_iter::Int=50, epsilon::Float64 = 1e-04, stop_at_local_maximum::Bool = false) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	return optimize_strategy!(problem, strategy, deepcopy(strategy), distribution, solver_data; max_iter=max_iter, epsilon = epsilon, stop_at_local_maximum = stop_at_local_maximum)
 end
 
 
-######################### Blackbox algorithm for finding a hard distribution #########################
+######################### Black-box algorithm for finding a hard distribution #########################
 
 """
 	generate_hard_distribution(N, oracle; max_iter = 1000, alpha = 0.003, M, = 10000 min_stabilization_iter = 50, trust_oracle = false, epsilon = 1e-03, time_until_suppression = 20, additional_constraints = (model, D) -> nothing)
@@ -246,7 +244,7 @@ function generate_hard_distribution(n_X::Int64, n_Y::Int64, oracle!::Function; m
 end
 
 function generate_hard_distribution(problem::P, strategy::S, data::I; full_optimization_probability = 0.2, optimization_iter_regular = 5, 
-	optimization_iter_extended = 50, promise::Union{Nothing, Matrix{Bool}} = nothing, solver_args...) where P <: Problems.ProblemType where S <: StrategyType where I <: InternalSolverDataType
+	optimization_iter_extended = 50, promise::Union{Nothing, Matrix{Bool}} = nothing, solver_args...) where P <: ProblemType where S <: StrategyType where I <: InternalSolverDataType
 	test_strategy = deepcopy(strategy)
 	
 

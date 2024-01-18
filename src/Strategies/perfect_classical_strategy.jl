@@ -11,20 +11,20 @@ struct HasPerfectClassicalStrategyInfo
 		new(zeros(Bool, n_X, n_A), zeros(Bool, n_Y, n_B), [], [])
 	end
 	
-	function HasPerfectClassicalStrategyInfo(game::Problems.Game)
+	function HasPerfectClassicalStrategyInfo(game::Game)
 		HasPerfectClassicalStrategyInfo(game.n_X, game.n_Y, game.n_A, game.n_B)
 	end
 end
 
 
 """
-	has_perfect_classical_strategy!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
+	has_perfect_classical_strategy!(game::Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
 
 Given a game, a strategy object for said game (the contents of which are irrelevant) and an instance of HasPerfectClassicalStrategyInfo, determines whether
 the given game has a perfect classical strategy or not. Unlike the other optimization functions in this module which are heuristic, this function is exact. If an exact strategy is found, 
 it will be stored in strategy. 
  """
-function has_perfect_classical_strategy!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
+function has_perfect_classical_strategy!(game::Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)::Bool
 	info.legal_outputs_alice .= true
 	info.legal_outputs_bob .= true
 	strategy.outputs_Alice .= 0
@@ -146,21 +146,21 @@ end
 
 
 """
-	has_perfect_classical_strategy(game::Problems.Game)::Bool
+	has_perfect_classical_strategy(game::Game)::Bool
 
 Given a game, determines whether the given game has a perfect classical strategy or not. Unlike the other optimization functions in this module which are heuristic, this function is exact. """
-function has_perfect_classical_strategy(game::Problems.Game)::Bool
+function has_perfect_classical_strategy(game::Game)::Bool
 	strategy = ClassicalStrategy(game)
 	info = HasPerfectClassicalStrategyInfo(game)
 	return has_perfect_classical_strategy!(game, strategy, info)
 end
 
 """
-	game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
+	game_is_critical!(game::Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
 
 Given a game and the required data, determines whether the game is classically critical, i.e. if the game does not have a perfect classical strategy and 
 if adding any answer to the game causes it to have a perfect classical strategy. """
-function game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
+function game_is_critical!(game::Game, strategy::ClassicalStrategy, info::HasPerfectClassicalStrategyInfo)
 	if(has_perfect_classical_strategy!(game, strategy, info))
 		return false
 	end
@@ -184,11 +184,11 @@ function game_is_critical!(game::Problems.Game, strategy::ClassicalStrategy, inf
 end
 
 """
-	game_is_critical(game::Problems.Game)
+	game_is_critical(game::Game)
 
 Given a game, determines whether the game is classically critical, i.e. if the game does not have a perfect classical strategy and 
 if adding any answer to the game causes it to have a perfect classical strategy. """
-function game_is_critical(game::Problems.Game)
+function game_is_critical(game::Game)
 	strategy = ClassicalStrategy(game)
 	info = HasPerfectClassicalStrategyInfo(game)
 	return game_is_critical!(game, strategy, info)

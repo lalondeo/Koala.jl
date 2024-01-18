@@ -85,8 +85,9 @@ function is_graph_k_colorable(adjacency_matrix, k)
     return graph_coloring_util(1)
 end
 
-for _=1:10
+for _=1:100
 	# G is taken to be smaller than previously so that ChatGPT's horrible code can handle it. 
+	global G
 	G = random_graph(rand(15:30), rand() * 0.4)
 	maximum_clique = find_maximum_clique(G)
 
@@ -117,7 +118,7 @@ end
 
 ######### compute_invariant #############
 perm = collect(1:50)
-for _=1:1000
+for _=1:100
 	G = random_graph(50, 0.4)
 	invariant = compute_invariant(G)
 	for _=1:10
