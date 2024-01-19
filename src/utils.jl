@@ -3,6 +3,7 @@ using JuMP
 using LinearAlgebra
 using Random
 
+export generate_random_quantum_correlation
 ######################### String manipulations #########################
 
 function encode_char(tab::Vector{Bool})::Char
@@ -48,7 +49,12 @@ end
 
 ######################### Generation of random POVMs and states #########################
 
-function gen_rand_POVM(n, dim)
+""" 
+	gen_rand_POVM(n::Int, dim::Int)::Vector{Matrix{ComplexF64}}
+
+Returns a randomly generated POVM with n elements over a space of dimension dim
+"""
+function gen_rand_POVM(n::Int, dim::Int)::Vector{Matrix{ComplexF64}}
 	Id = diagm([1 for i=1:dim]);
 	POVM = []
 	for a=1:n-1
@@ -67,11 +73,65 @@ function gen_rand_POVM(n, dim)
 	return POVM
 end
 
-function gen_rho(dim)
-	U = rand(Haar(2), dim)
+"""
+	gen_projective_measurement(n::Int, dim::Int)::Vector{Matrix{ComplexF64}}
+	
+"""
+function gen_projective_measurement(n::Int, dim::Int)::Vector{Matrix{Float64}}
+	@assert dim >= n
+	basis = rand(Haar(1), dim)
+	current = zeros(Float64, dim, dim)
+	measurement = []
+	projector_dimension = div(dim, n)
+	k = 0
+	for j=1:dim
+		current += basis[:,j] * adjoint(basis[:,j])
+		k += 1
+		if(k >= projector_dimension)
+			push!(measurement, current)
+			current = zeros(Float64, dim, dim)
+			k = 0
+		end
+	end
+	if(k != 0)
+		push!(measurement, current)
+	end
+	shuffle!(measurement)
+	return measurement
+end
+	
+""" 
+	gen_rho(dim::Int64)::Matrix{ComplexF64}
+
+Returns a random mixed state on a space of dimension dim
+"""
+function gen_rho(dim::Int64)::Matrix{ComplexF64}
+	U = rand(Haar(1), dim)
 	coeffs = abs.(randn(dim))
 	coeffs /= sum(coeffs)
 	return U * diagm(coeffs) * adjoint(U)
+end
+	
+
+""" 
+	generate_random_quantum_correlation(n_X::Int, n_Y::Int, n_A::Int, n_B::Int, dim::Int)::Array{Float64, 4}
+
+Given the input and output sizes and the dimension dim, returns a correlation that can be realized by participants who share a maximally entangled state of dimension dim.
+"""
+function generate_random_quantum_correlation(n_X::Int, n_Y::Int, n_A::Int, n_B::Int, dim::Int)::Array{Float64, 4}
+	res = zeros(Float64, n_X, n_Y, n_A, n_B)
+	measurements_alice = [gen_projective_measurement(n_A, dim) for _=1:n_X]
+	measurements_bob = [gen_projective_measurement(n_B, dim) for _=1:n_Y]
+	for x=1:n_X
+		for y=1:n_Y
+			for a=1:n_A
+				for b=1:n_B
+					res[x,y,a,b] = abs(tr(measurements_alice[x][a] * adjoint(measurements_bob[y][b])))
+				end
+			end
+		end
+	end
+	return res
 end
 
 

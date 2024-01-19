@@ -8,7 +8,7 @@ import Base.copy
 using SparseArrays
 using LinearAlgebra
 using Combinatorics
-export NPAGeneral
+export NPAClassical
 import IterTools
 
 struct ClassicalMonomial
@@ -76,6 +76,10 @@ Base.length(m::ClassicalMonomial) = count((i)->i != 0, m.alice_part) + count((i)
 
 
 ### Actual hierarchy ###
+# A NPA hierarchy for classical correlations. Amounts to having everything commute in the original NPA hierarchy. Although the idea is simple enough, 
+# as far as I (O.L.) know, this is nowhere to be found in the literature. In stark contrast to the original NPA hierarchy, this hierarchy does not comprise an infinite
+# number of levels, and, indeed, collapses at the n_X + n_Y level onwards. I do not know whether this last level always coincides with the set of classical correlations.
+  
 
 struct NPAClassical <: NPA
 	n_X::Int64
