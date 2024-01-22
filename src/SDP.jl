@@ -249,7 +249,7 @@ function validate_dual_solution(model::SDP_Model, y::Vector{Float64}; formal::Bo
 		end
 		val_obj += y[i] * constraint.b_val
 	end
-	return val_obj
+	# return val_obj
 
 	# Prove that R is positive definite
 	if((formal && prove_positive_definiteness(R)) || (!formal && isposdef(R)))
